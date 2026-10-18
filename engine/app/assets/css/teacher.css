@@ -284,3 +284,10 @@
   .wsp__figs img { max-height: 45mm; max-width: 80mm; margin: 1mm 2mm 0 0; }
   .wsp__foot { margin-top: 6mm; font-size: 8.5pt; color: #666; }
 }
+
+/* 전자칠판에서 열기 */
+.boardcode { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; }
+.boardcode > div { background: var(--paper-2); border-radius: 14px; padding: 10px 14px; display: grid; gap: 2px; }
+.boardcode small { color: var(--ink-2); font-size: 13px; }
+.boardcode b { font-size: 26px; letter-spacing: .02em; overflow-wrap: anywhere; }
+.boardcode b.num { font-size: 34px; letter-spacing: .12em; }

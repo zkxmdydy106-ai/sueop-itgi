@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>수업 열기 · 수업잇기</title>
+<style>
+  :root { --paper: #FFFCF6; --paper-2: #F7F1E4; --ink: #17191B; --ink-2: #5B5E63; --accent: #E0336E; --line: #E6DCC8; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); font-family: "SUIT Variable", "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+  main { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+  .box { width: min(560px, 100%); display: grid; gap: 18px; text-align: center; }
+  h1 { margin: 0; font-size: clamp(30px, 5vw, 46px); letter-spacing: -0.02em; }
+  p { margin: 0; color: var(--ink-2); font-size: 18px; }
+  .code { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .code span { height: 84px; border-radius: 18px; border: 2px solid var(--line); background: #fff; display: grid; place-items: center; font-size: 46px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .code span.on { border-color: var(--ink); }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pad button { height: 76px; border-radius: 18px; border: 1.5px solid var(--line); background: var(--paper-2); font: inherit; font-size: 32px; font-weight: 800; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+  .pad button:active { transform: scale(.97); }
+  .pad .go { background: var(--ink); color: var(--paper); border-color: var(--ink); font-size: 24px; }
+  .pad .back { font-size: 22px; }
+  .err { color: var(--accent); font-weight: 700; min-height: 1.4em; }
+  small { color: var(--ink-2); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="box">
+    <h1>수업 열기</h1>
+    <p>선생님 칠판 코드 6자리를 눌러 주세요.</p>
+    <div class="code" id="code" aria-live="polite"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="err" id="err"></div>
+    <div class="pad" id="pad"></div>
+    <small>코드는 선생님 기록 화면 › 설정에 있어요. 다음부터는 즐겨찾기에 넣어 두면 바로 열려요.</small>
+  </div>
+</main>
+<script>
+  (function () {
+    var v = '', cells = document.querySelectorAll('#code span'), pad = document.getElementById('pad'), err = document.getElementById('err');
+    if (location.pathname.length > 1) err.textContent = '코드가 맞지 않아요. 다시 눌러 주세요.';
+    function paint() { cells.forEach(function (c, i) { c.textContent = v[i] || ''; c.className = i === v.length ? 'on' : ''; }); }
+    function go() { if (v.length === 6) location.href = '/' + v; }
+    function key(k) { err.textContent = ''; if (k === '←') v = v.slice(0, -1); else if (k === '열기') return go(); else if (v.length < 6) v += k; paint(); if (v.length === 6) setTimeout(go, 250); }
+    ['1','2','3','4','5','6','7','8','9','←','0','열기'].forEach(function (k) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = k; if (k === '열기') b.className = 'go'; if (k === '←') { b.className = 'back'; b.setAttribute('aria-label', '지우기'); }
+      b.onclick = function () { key(k); }; pad.appendChild(b);
+    });
+    document.addEventListener('keydown', function (e) { if (/^[0-9]$/.test(e.key)) key(e.key); else if (e.key === 'Backspace') key('←'); else if (e.key === 'Enter') key('열기'); });
+    paint();
+  })();
+</script>
+</body>
+</html>

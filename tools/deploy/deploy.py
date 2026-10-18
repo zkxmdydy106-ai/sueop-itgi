@@ -23,6 +23,29 @@ def run(cmd, cwd=None):
         sys.exit('멈춤: 위 단계에서 오류가 났어요.')
 
 
+def ensure_short(course, conf, project, key):
+    """짧은 주소(<shortSite>.web.app) + 6자리 칠판 코드 → 칠판 링크로 바로 이동.
+    코드는 작업물/<이름>/.boardcode (올라가지 않음). 코드를 바꾸려면 그 파일을 지우고 다시 배포."""
+    site = conf.get('shortSite')
+    if not site or not key: return None
+    import random
+    cp = os.path.join(course, '.boardcode')
+    if not os.path.exists(cp): open(cp, 'w').write('%06d' % random.SystemRandom().randrange(0, 1000000))
+    code = open(cp).read().strip()
+    sd = os.path.join(course, 'short'); os.makedirs(sd, exist_ok=True)
+    page = open(os.path.join(ROOT, 'engine', 'short', 'index.html'), encoding='utf-8').read()
+    for f in ('index.html', '404.html'): open(os.path.join(sd, f), 'w', encoding='utf-8').write(page)
+    fj = os.path.join(course, 'firebase.json'); d = json.load(open(fj, encoding='utf-8'))
+    h = d['hosting']; main_h = h if isinstance(h, dict) else [x for x in h if x.get('site') != site][0]
+    main_h['site'] = project
+    board = 'https://%s.web.app/board.html?k=%s' % (project, key)
+    d['hosting'] = [main_h, {'site': site, 'public': 'short', 'cleanUrls': True,
+                             'redirects': [{'source': '/' + code, 'destination': board, 'type': 302}],
+                             'headers': [{'source': '**', 'headers': [{'key': 'X-Robots-Tag', 'value': 'noindex'}, {'key': 'Cache-Control', 'value': 'no-cache'}, {'key': 'Referrer-Policy', 'value': 'no-referrer'}]}]}]
+    json.dump(d, open(fj, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+    return code
+
+
 def ensure_join(course, project, key):
     """학생 링크 코드(student.html?j=코드). 이 코드로 들어온 학생은 로그인하면 명단에 저절로 들어간다.
     코드는 작업물/<이름>/.joincode 에 둔다(올라가지 않음). 선생님이 「닫기」 한 것은 다시 열지 않는다."""
@@ -60,6 +83,9 @@ def main():
     ex = os.path.join(course, 'extras')   # 연결된 수업 활동 파일(예: 드론 미션) — 교과서 내용이 아닌 선생님 작품만 둔다
     if os.path.isdir(ex): shutil.copytree(ex, os.path.join(course, 'app', 'extras'), dirs_exist_ok=True)
     run([py, 'tools/deploy/prepare_firebase.py', course, '--config', cfg] + sum([['--teacher', t] for t in conf['teachers']], []))
+    project0 = json.load(open(os.path.join(course, '.firebaserc'), encoding='utf-8'))['projects']['default']
+    key0 = open(os.path.join(course, '.sharekey')).read().strip() if os.path.exists(os.path.join(course, '.sharekey')) else ''
+    bcode = ensure_short(course, conf, project0, key0)
     run('npx -y firebase-tools deploy --only hosting,firestore --non-interactive', cwd=course)
     if not a.skip_upload:
         run([py, 'tools/deploy/upload_course.py', course])
@@ -68,7 +94,10 @@ def main():
     key = open(os.path.join(course, '.sharekey')).read().strip() if os.path.exists(os.path.join(course, '.sharekey')) else ''
     base = 'https://%s.web.app' % project
     code = ensure_join(course, project, key)
-    links = ['칠판 (로그인 없이): %s/board.html?k=%s' % (base, key) if key else '칠판: %s/board.html' % base,
+    if bcode:
+        from upload_course import token, put
+        put(token(), project, 'config/board', {'short': conf['shortSite'] + '.web.app', 'code': bcode})   # 선생님 화면 설정에 보여 줌
+    links = (['전자칠판에서 쉽게: %s.web.app 에 들어가 칠판 코드 %s (또는 %s.web.app/%s)' % (conf['shortSite'], bcode, conf['shortSite'], bcode)] if bcode else []) + ['칠판 (로그인 없이): %s/board.html?k=%s' % (base, key) if key else '칠판: %s/board.html' % base,
              '학생 (아이패드·클래스룸 — 로그인하면 명단에 저절로): %s/student.html?j=%s' % (base, code),
              '선생님 기록: %s/teacher.html' % base]
     open(os.path.join(course, '링크.txt'), 'w', encoding='utf-8').write('\n'.join(links) + '\n\n칠판 링크는 반 밖으로 공유하지 마세요 (교과서 저작권).\n')

@@ -24,7 +24,7 @@
     try { T.tb = DT.render.flatten(await DT.data.getCourse()); } catch (e) { T.tb = null; }
     if (T.tb) DT.applySubject(T.tb.meta.subject);
     T.classes = await DT.data.listClasses();
-    [T.pending, T.join, T.joinOpen] = await Promise.all([DT.data.listPending().catch(() => []), DT.data.joinCode().catch(() => ''), DT.data.joinOpen().catch(() => null)]);
+    [T.pending, T.join, T.joinOpen, T.board] = await Promise.all([DT.data.listPending().catch(() => []), DT.data.joinCode().catch(() => ''), DT.data.joinOpen().catch(() => null), DT.data.boardCode().catch(() => null)]);
     T.classId = DT.store.get('t.class', null); if (!T.classes.find((c) => c.id === T.classId)) T.classId = T.classes[0] ? T.classes[0].id : null;
     const q = DT.qs(); if (q.v) T.view = q.v;
     await loadAll();
@@ -498,6 +498,12 @@
     const studentUrl = DT.studentLink(T.join);
     const c2 = card('학생에게 링크 주기', null);
     c2.append(DT.el('div', { class: 'row', style: { alignItems: 'flex-start', gap: '16px' } }, DT.chart.qr(studentUrl, 160), DT.el('div', { style: { display: 'grid', gap: '8px', flex: '1', minWidth: '0' } }, DT.el('p', { class: 'muted', style: { margin: 0 } }, '전자칠판에 이 QR을 띄우거나 클래스룸에 주소를 붙여 주세요. 학생은 학교 구글 계정으로 로그인하고 학년·반·번호만 적으면 명단에 저절로 들어와요.'), joinToggle(), DT.el('div', { class: 'linkbox' }, DT.el('code', null, studentUrl), DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('copy') + '복사', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(studentUrl); DT.toast('주소를 복사했어요.'); } })))));
+    /* 전자칠판에서 열기: 짧은 주소 + 6자리 코드 */
+    const cb = T.board && T.board.code ? card('전자칠판에서 열기', DT.el('span', { class: 'sub' }, '반 밖으로 알리지 마세요')) : null;
+    if (cb) cb.append(DT.el('div', { class: 'boardcode' },
+      DT.el('div', null, DT.el('small', null, '1. 전자칠판 브라우저 주소창에'), DT.el('b', null, T.board.short)),
+      DT.el('div', null, DT.el('small', null, '2. 칠판 코드'), DT.el('b', { class: 'num' }, T.board.code))),
+      DT.el('p', { class: 'muted', style: { margin: 0 } }, '한 번에: ' + T.board.short + '/' + T.board.code + ' · 처음 연 뒤 즐겨찾기에 넣어 두면 다음부터 한 번에 열려요.'));
     const c3 = card('교과서', null);
     if (DT.data.mode === 'firebase') {
       c3.append(DT.el('p', { class: 'muted', style: { margin: 0 } }, T.tb ? '올라가 있는 교과서: ' + DT.plain(T.tb.meta.title) : '아직 교과서가 올라가지 않았어요.'), DT.el('p', { class: 'muted', style: { margin: 0 } }, '교과서는 Code가 배포할 때 저절로 올라가요. 쪽을 더 만들어도 같은 링크에 이어서 붙고, 학생 기록은 그대로예요. (아래 버튼은 직접 올려야 할 때만)'));
@@ -524,7 +530,7 @@
     });
     const c5 = card('화면 테마', DT.el('span', { class: 'sub' }, '이 기기 · 칠판·학생 화면과 같은 색'));
     c5.append(DT.theme.picker());
-    g.append(c1, c2, ...cx, c5, c3, c4); view().append(g);
+    g.append(...[cb, c1, c2].filter(Boolean), ...cx, c5, c3, c4); view().append(g);
   }
   /* 학교 계정이 아닌 학생: 선생님이 받기·빼기 */
   async function refreshPeople() {

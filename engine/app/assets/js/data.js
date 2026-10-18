@@ -91,6 +91,7 @@
       async approveMember() {},
       async removeMember(key) { db.roster = col('roster').filter((r) => r.key !== key); changed('roster'); },
       async joinCode() { return ''; },
+      async boardCode() { return null; },
       async joinOpen() { return null; },
       async setJoinOpen() {},
       /* 학습지 */
@@ -284,6 +285,7 @@
       async listPending() { return docs(await fs.collection('members').where('ok', '==', false).get()).map((d) => Object.assign({ key: d.id, email: d.id }, d)); },
       async approveMember(key) { await fs.collection('members').doc(key).set({ ok: true }, { merge: true }); },
       async removeMember(key) { await fs.collection('members').doc(key).delete(); },
+      async boardCode() { const d = await fs.collection('config').doc('board').get().catch(() => null); return d && d.exists ? d.data() : null; },
       async joinCode() { const d = await fs.collection('config').doc('join').get().catch(() => null); return d && d.exists ? d.data().code || '' : ''; },
       async joinOpen() { const c = await api.joinCode(); if (!c) return null; const d = await fs.collection('join').doc(c).get().catch(() => null); return d && d.exists ? d.data().open !== false : null; },
       async setJoinOpen(open) { const c = await api.joinCode(); if (c) await fs.collection('join').doc(c).set({ open: !!open }, { merge: true }); },

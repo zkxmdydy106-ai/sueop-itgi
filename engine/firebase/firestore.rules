@@ -23,7 +23,7 @@ service cloud.firestore {
     function myClass() { return get(/databases/$(db)/documents/members/$(email())).data.classId; }
     function inMyClass(cid) { return isMember() && cid == myClass(); }
 
-    match /config/{id}   { allow read: if isTeacher() || isMember(); allow write: if isTeacher(); }
+    match /config/{id}   { allow read: if isTeacher() || (isMember() && !(id in ['board', 'join'])); allow write: if isTeacher(); }   // 칠판 코드·학생 링크 코드는 선생님만
     match /members/{em}  { allow read: if isTeacher() || (signedIn() && em == email());   // 학생은 자기 줄만 (반 명단은 선생님만)
       // 학생 링크(?j=코드)로 들어온 학생은 자기 줄을 한 번 만들 수 있다 — 학년·반·번호·이름만, 고치기·빼기는 선생님만
       allow create: if isTeacher() || (signedIn() && em == email()
