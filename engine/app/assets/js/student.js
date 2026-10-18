@@ -148,11 +148,12 @@
     });
     left.append(wl);
     const wrongN = wrongItems().length;
-    const extraTiles = DT.extras.list().filter((ex) => ex.student || ex.visitor).map((ex) => tile(ex.icon || 'play', ex.title, '바로 시작 · 결과는 선생님 화면에', '', () => window.open(DT.extras.url(ex.student || ex.visitor, { num: S.me.no, name: S.me.name }), '_blank')));
+  /* 지난 수업 다시 보기의 활동 화면: 새 창으로 */
+    if (!S.xp) { S.xp = 1; DT.on('extra-play', (o) => window.open(o.url, '_blank')); }
     const side = DT.el('aside', { class: 'side' },
       tile('note', '오답 노트', '틀린 문제 다시 풀기', wrongN || '', reviewWrong),
       tile('board', '지난 수업 다시 보기', '선생님 판서와 함께', '', lessons),
-      tile('chart', '내 기록', '참여 · 정답률 · 받은 피드백', '', mine), ...extraTiles);
+      tile('chart', '내 기록', '참여 · 정답률 · 받은 피드백', '', mine));
     m.append(DT.el('div', { class: 'home' }, left, side));
   }
   function tile(ic, t, d, n, fn) { return DT.el('button', { class: 'tile', type: 'button', onclick: fn, html: DT.icon(ic) + '<span class="tile__t"><b>' + t + '</b><span>' + d + '</span></span>' + (n !== '' ? '<i class="num">' + n + '</i>' : '') }); }

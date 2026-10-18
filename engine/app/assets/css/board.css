@@ -211,3 +211,11 @@
 .qpop b { flex: none; display: inline-flex; align-items: center; gap: 8px; font-size: 20px; padding: 6px 14px; border-radius: 999px; background: var(--accent); color: #fff; }
 .qpop b .ic { width: 22px; height: 22px; }
 .qpop.is-out { opacity: 0; }
+
+/* 연결 활동 (드론 미션) — 그 화면에 QR + 칠판에서 해 보기 + 실시간 화면 */
+.b-extra { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center; padding: 18px 22px; border-radius: 22px; background: var(--white); border: 1.5px solid var(--line-2); }
+.b-extra__qr svg { display: block; width: 210px; height: 210px; }
+.b-extra__text { display: grid; gap: 10px; }
+.b-extra__text > b { font-size: 26px; }
+.b-extra__text > span { color: var(--ink-2); font-size: 18px; }
+.b-extra__btns { display: flex; flex-wrap: wrap; gap: 8px; }

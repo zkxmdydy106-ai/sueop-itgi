@@ -530,7 +530,7 @@
     });
     const c5 = card('화면 테마', DT.el('span', { class: 'sub' }, '이 기기 · 칠판·학생 화면과 같은 색'));
     c5.append(DT.theme.picker());
-    g.append(...[cb, c1, c2].filter(Boolean), ...cx, c5, c3, c4); view().append(g);
+    g.append(...[cb, c1, c2].filter(Boolean), c5, c3, c4);   /* 연결 활동(드론 등)은 해당 교과서 화면에 QR로 */ view().append(g);
   }
   /* 학교 계정이 아닌 학생: 선생님이 받기·빼기 */
   async function refreshPeople() {

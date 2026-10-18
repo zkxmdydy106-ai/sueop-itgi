@@ -28,28 +28,6 @@
     } catch (e) { box.innerHTML = ''; box.append(DT.el('p', null, 'QR 로그인을 준비하지 못했어요. 「이 컴퓨터에서 구글 로그인」을 눌러 주세요. (' + (e.code || e.message) + ')')); }
     return m;
   }
-  /* 연결된 수업 활동 (드론 미션 등): 학생 QR · 참관 선생님 QR · 실시간 화면 · 칠판에서 해 보기 */
-  function openExtra(o) {
-    const ex = DT.extras.get(o && o.id); if (!ex) return DT.toast('이 활동의 주소가 설정되어 있지 않아요.', 'bad');
-    let who = ex.student ? 'student' : 'visitor', m = (o && o.m) || '';
-    const qrBox = DT.el('div', { style: { display: 'grid', justifyItems: 'center', gap: '10px', textAlign: 'center' } });
-    const tabs = DT.el('div', { class: 'seg', role: 'group', style: { display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' } });
-    const mis = DT.el('div', { style: { display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' } });
-    const target = () => DT.extras.url(who === 'student' ? ex.student : ex.visitor, { m: m || null, teacher: who === 'visitor' ? '1' : null });
-    function paint() {
-      qrBox.innerHTML = '';
-      qrBox.append(DT.chart.qr(target(), 340), DT.el('b', { style: { fontSize: '22px' } }, who === 'student' ? '우리 반 학생 — 아이패드 카메라로 찍기' : '참관·다른 선생님 — 휴대폰 카메라로 찍기'),
-        DT.el('span', { class: 'muted', style: { fontSize: '14px' } }, who === 'student' ? '학교 계정으로 열려요. 결과가 실시간 화면에 모여요.' : '로그인 없이 누구나 체험해요. 기록은 남지 않아요.'));
-      DT.$$('button', tabs).forEach((b) => b.setAttribute('aria-pressed', b.dataset.w === who ? 'true' : 'false'));
-      DT.$$('button', mis).forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === m ? 'true' : 'false'));
-    }
-    [['student', '우리 반 학생'], ['visitor', '참관·다른 선생님']].forEach(([w, t]) => { if ((w === 'student' && !ex.student) || (w === 'visitor' && !ex.visitor)) return; const b = DT.el('button', { class: 'chip', type: 'button', 'data-w': w }, t); b.onclick = () => { who = w; paint(); }; tabs.append(b); });
-    [['', '처음 화면']].concat(ex.missions || []).forEach(([k, t]) => { const b = DT.el('button', { class: 'chip', type: 'button', 'data-m': k }, t); b.onclick = () => { m = k; paint(); }; mis.append(b); });
-    const live = DT.el('div', { style: { display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' } }, (ex.live || []).map((l) => DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('signal') + DT.esc(l.label), onclick: () => window.open(l.url, '_blank') })));
-    paint();
-    DT.modal({ title: ex.title || '수업 활동', wide: true, body: DT.el('div', { style: { display: 'grid', gap: '14px' } }, tabs, mis, qrBox, (ex.live || []).length ? DT.el('div', { style: { display: 'grid', gap: '6px', justifyItems: 'center' } }, DT.el('span', { class: 'muted' }, '실시간으로 확인하기 (선생님 학교 계정)'), live) : null),
-      actions: [{ label: '닫기' }, { label: '칠판에서 해 보기', kind: 'ink', icon: 'play', onClick: (c) => { c(); playExtra(DT.extras.url(ex.visitor || ex.student, { m: m || null, teacher: '1' }), ex.title); } }] });
-  }
   /* 활동을 칠판 위에 크게 띄워 직접 해 보기 (닫기 한 번) */
   function playExtra(url, title) {
     const root = DT.el('div', { class: 'overlay', role: 'dialog', 'aria-label': title || '활동', style: { position: 'fixed', inset: '0', zIndex: '60', background: 'var(--desk)', display: 'grid', gridTemplateRows: 'auto 1fr' } });
@@ -58,7 +36,7 @@
       DT.el('iframe', { src: url, title: title || '활동', allow: 'fullscreen; accelerometer; gyroscope', style: { width: '100%', height: '100%', border: '0', background: '#fff' } }));
     document.body.append(root);
   }
-  DT.on('extra', openExtra);
+  DT.on('extra-play', (o) => playExtra(o.url, o.title));
 
   /* 학생 접속 QR (로그인 없이도 띄울 수 있음) */
   async function studentQR() {
@@ -456,7 +434,6 @@
     item('board', '빈 칠판', '흰 바탕 · 모눈 · 초록 칠판', openBlank);
     item('note', '수업 마치기', '오늘 진도와 반응을 일지로 저장', needClass(endLesson));
     item('qr', '학생 접속 QR', '아이패드로 찍기 · 클래스룸에 올리기', studentQR);
-    DT.extras.list().forEach((ex) => item(ex.icon || 'play', ex.title, ex.desc || '학생 QR · 실시간 화면', () => openExtra({ id: ex.id })));
     item('palette', '화면 테마', '밝은 색 7가지 중 고르기', () => DT.theme.open());
     item('question', '사용 안내', '처음 안내와 단축키 다시 보기', coach);
     const close = () => { m.remove(); $('#btnTools').setAttribute('aria-expanded', 'false'); popEsc(); };

@@ -116,10 +116,19 @@
         break;
       }
       case 'extra': {   /* 연결된 수업 활동(예: 드론 미션) — config.extras 의 id, m = 미션 */
-        n = DT.el('button', { class: 'b-lab b-lab--extra', type: 'button', 'data-extra': b.id },
-          DT.el('span', { class: 'b-lab__icon', html: DT.icon(b.icon || 'qr') }),
-          DT.el('span', { class: 'b-lab__text' }, DT.el('b', null, b.label || '활동 열기'), b.desc ? DT.el('span', { html: md(b.desc) }) : null));
-        n.addEventListener('click', () => DT.emit('extra', { id: b.id, m: b.m }));
+        /* 그 화면에 맞는 미션 QR을 바로 보여 준다 (학생·참관 선생님 같은 QR — 참관은 활동 안에서 「선생님 참관용」 체크) */
+        const ex = DT.extras.get(b.id);
+        if (!ex) { n = DT.el('div'); break; }
+        const url = DT.extras.url(ex.student || ex.visitor, { m: b.m || null });
+        n = DT.el('div', { class: 'b-extra' });
+        if (DT.chart && DT.chart.qr) n.append(DT.el('div', { class: 'b-extra__qr' }, DT.chart.qr(url, 210)));
+        const btn = (icon, label, fn, ink) => DT.el('button', { class: 'obtn' + (ink ? ' obtn--ink' : ''), type: 'button', html: DT.icon(icon) + DT.esc(label), onclick: fn });
+        n.append(DT.el('div', { class: 'b-extra__text' },
+          DT.el('b', null, (ex.title || '활동') + ' — 카메라로 찍기'),
+          DT.el('span', null, '학생은 학번·이름, 참관 선생님은 「선생님 참관용」에 체크하고 시작해요.'),
+          DT.el('div', { class: 'b-extra__btns' },
+            btn('play', '칠판에서 해 보기', () => DT.emit('extra-play', { url, title: ex.title }), true),
+            ...(DT.chart ? ex.live || [] : []).filter((l) => !/모음/.test(l.label)).map((l) => btn('signal', l.label, () => window.open(l.url, '_blank'))))));
         break;
       }
       case 'cols': {
