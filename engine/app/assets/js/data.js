@@ -193,7 +193,8 @@
         const fcfg = Object.assign({}, C.firebase);
         if (C.authHere && /\.(web\.app|firebaseapp\.com)$/.test(location.hostname)) fcfg.authDomain = location.host;
         if (!firebase.apps.length) firebase.initializeApp(fcfg);
-        fs = firebase.firestore(); auth = firebase.auth();
+        fs = firebase.firestore(); try { fs.settings({ ignoreUndefinedProperties: true, merge: true }); } catch (e) {}   /* 빈 칸(undefined)이 섞여도 저장이 막히지 않게 */
+        auth = firebase.auth();
         await new Promise((ok) => { const off = auth.onAuthStateChanged(async (u) => { off(); await resolveUser(u); ok(); }); });
       },
       user() { return me; },

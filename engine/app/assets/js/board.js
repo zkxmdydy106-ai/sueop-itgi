@@ -494,7 +494,8 @@
   }
   async function sendAsk(q) {
     q.qid = DT.uid('lq'); q.open = true; q.reveal = false; q.at = Date.now(); q.screenId = screens()[S.idx].id;
-    await DT.data.setLive(S.classId, { question: q });
+    try { await DT.data.setLive(S.classId, { question: JSON.parse(JSON.stringify(q)) }); }
+    catch (e) { return DT.toast('학생에게 보내지 못했어요. 칠판을 휴대폰 QR로 다시 열어 주세요. (' + (e.code || e.message || e) + ')', 'bad'); }
     showAskPanel(q);
   }
   function showAskPanel(q) {
