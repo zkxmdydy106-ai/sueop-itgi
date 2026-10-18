@@ -40,10 +40,14 @@ def main():
     open(cpath, 'w', encoding='utf-8').write(c)
     rpath = os.path.join(a.course, 'firestore.rules'); r = open(rpath, encoding='utf-8').read()
     r = re.sub(r'email\(\) in \[[^\]]*\]', 'email() in ' + json.dumps(emails), r)
+    # 학생이 스스로 명단에 들어올 때 바로 들어오는 계정 주소 = 선생님 학교 계정의 @ 뒤 (gmail 같은 공용 주소는 빼고 → 선생님 확인)
+    PUBLIC = {'gmail.com', 'googlemail.com', 'naver.com', 'daum.net', 'hanmail.net', 'kakao.com', 'nate.com', 'outlook.com', 'hotmail.com', 'live.com', 'icloud.com', 'yahoo.com'}
+    domains = sorted({e.split('@')[1] for e in emails} - PUBLIC)
+    r = re.sub(r"split\('@'\)\[1\] in \[[^\]]*\]", "split('@')[1] in " + json.dumps(domains), r)
     open(rpath, 'w', encoding='utf-8').write(r)
     rc = {'projects': {'default': conf['projectId']}}
     json.dump(rc, open(os.path.join(a.course, '.firebaserc'), 'w', encoding='utf-8'), indent=2)
-    print('준비 완료 — 선생님 계정:', ', '.join(emails))
+    print('준비 완료 — 선생님 계정:', ', '.join(emails), '/ 바로 들어오는 학생 계정 주소:', ', '.join(domains) or '(없음 — 모두 선생님 확인)')
     print('다음 (작업물 폴더에서):  npx firebase-tools login  →  npx firebase-tools deploy --only hosting,firestore')
     print('주의: content 폴더는 공개 호스팅에 올라가지 않아요. 배포 뒤 선생님 화면 › 설정 › 교과서 올리기로 Firestore에 올립니다.')
 

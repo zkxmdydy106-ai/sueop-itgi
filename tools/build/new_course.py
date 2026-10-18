@@ -83,7 +83,7 @@ def main():
         shutil.copy(os.path.join(ROOT, 'engine', 'firebase', f), os.path.join(dst, f))
     os.makedirs(os.path.join(dst, 'content', 'pages', 'hi'), exist_ok=True); os.makedirs(os.path.join(dst, 'content', 'figs'), exist_ok=True)
     cid = slug(a.name)
-    cfg = """/* 이 교과서 앱의 설정 — 디지털교과서공방이 채운다.
+    cfg = """/* 이 교과서 앱의 설정 — 수업잇기가 채운다.
    · 모드 — demo: 이 브라우저 안에서만 / firebase: 구글 로그인 + 반 기록
    · Firebase 값 — Firebase 콘솔 › 프로젝트 설정 › 웹 앱의 firebaseConfig (공개돼도 되는 값. 보호는 firestore.rules)
    · 선생님 계정 — firestore.rules에도 같은 값 → python tools/deploy/prepare_firebase.py 가 채운다 */

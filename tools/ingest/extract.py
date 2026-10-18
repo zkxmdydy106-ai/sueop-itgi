@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """교과서 PDF → 엔진 재료 뽑기 (쪽 그림 · 글 줄 좌표 · 그림 후보 · 목차 · 쪽 번호 보정)
 
-사용 (디지털교과서공방 폴더에서):
+사용 (이 저장소 폴더에서):
   python tools/ingest/extract.py "교과서_넣는곳/기하.pdf" --out "작업물/기하/content"
   python tools/ingest/extract.py 책.pdf --out ... --pages 70-90        # 인쇄 쪽 번호 범위만
   python tools/ingest/extract.py 책.pdf --out ... --offset 10          # PDF 쪽 = 인쇄 쪽 - 10 일 때 (자동 판별이 틀리면)

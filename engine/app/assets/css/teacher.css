@@ -143,9 +143,9 @@
 .pager { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ink-2); }
 
 /* 설정 */
-.set-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.set-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-rows: min-content; align-content: start; gap: 16px; overflow: auto; padding: 2px; }   /* 설정은 수업 화면이 아니라서 길어지면 이 안에서만 내려 본다 */
 .qr svg { display: block; }
-.linkbox { display: flex; gap: 8px; align-items: center; }
+.linkbox { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .linkbox code { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; background: var(--paper-2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 보내기 마법사 */
@@ -192,3 +192,10 @@
   .tc { grid-template-columns: 64px 1fr; }
   .tc-nav__btn span:not(.badge), .tc-nav__foot .btn span { display: none; }
 }
+
+/* 들어오려는 학생 · 명단 보기 */
+.pend { display: grid; gap: 6px; padding: 12px; border-radius: var(--r-m); background: var(--accent-wash); }
+.pend__row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.pend__row:first-of-type { border-top: 0; }
+.pend__row small { grid-column: 1; grid-row: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pend__row .btn { grid-row: 1 / span 2; }

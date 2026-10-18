@@ -6,7 +6,7 @@ window.TEXTBOOK = {
   "course": "기하",
   "publisher": "엔진 시험용 예시 (실제 교과서 아님)",
   "curriculum": "2022 개정",
-  "source": "이 예시는 디지털교과서공방이 엔진 시험을 위해 새로 쓴 글과 그림입니다.",
+  "source": "이 예시는 수업잇기가 엔진 시험을 위해 새로 쓴 글과 그림입니다.",
   "demo": true
  },
  "pages": {

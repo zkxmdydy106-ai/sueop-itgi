@@ -1,9 +1,9 @@
 ---
 name: textbook-webapp
-description: 교과서 PDF를 전자칠판용 디지털 교과서·학생 아이패드 사이트·선생님 기록 화면으로 만드는 전체 순서와 관문. 선생님이 교과서를 넣었거나 "디지털 교과서 만들어 줘", "이 교과서로 수업 화면", "다음 소단원" 등을 말하면 가장 먼저 읽는다.
+description: 교과서 PDF를 전자칠판 수업 화면·학생 아이패드 사이트·선생님 기록 화면(수업잇기)으로 만드는 전체 순서와 관문. 선생님이 교과서를 넣었거나 "수업잇기 만들어 줘", "디지털 교과서 만들어 줘", "이 교과서로 수업 화면", "다음 소단원" 등을 말하면 가장 먼저 읽는다.
 ---
 
-# 교과서 → 디지털 교과서 (전체 흐름)
+# 교과서 → 수업잇기 (전체 흐름)
 
 이 스킬은 **순서와 관문**만 다룬다. 각 단계의 방법은 표시된 스킬을 그때 읽는다.
 목표: 선생님이 내일 수업에서 링크 하나로 열어 바로 쓰는 것. 교과서 글은 그대로, 화면은 깔끔하게, 기록은 남게.
@@ -87,7 +87,7 @@ python tools/verify/audit_app.py 작업물/<이름> --shots        # 넘침·오
 ```
 npx -y firebase-tools login --reauth                       ← 터미널 탭에서. 열린 구글 화면에서 선생님이 「허용」 (Code가 브라우저로 도와줘도 됨)
 python tools/deploy/new_server.py "작업물/<이름>" --teacher 선생님@학교.kr   ← 프로젝트·Firestore(서울)·익명 로그인·웹 앱 설정
-  (출력에 [브라우저 단계]가 있으면 Code가 콘솔에서 Google 로그인을 켠다 — 공개 이름 「디지털 교과서」, 지원 이메일 = 선생님)
+  (출력에 [브라우저 단계]가 있으면 Code가 콘솔에서 Google 로그인을 켠다 — 공개 이름 「수업잇기」, 지원 이메일 = 선생님)
 python tools/deploy/deploy.py "작업물/<이름>"                 ← 엔진 반영·보안 규칙·호스팅·교과서 올리기·링크 출력 (링크.txt)
 ```
 - 배포 직전 `privacy-guard` + `qa-tester`. 교과서 내용(content)은 공개 호스팅에 올리지 않는다 — Firestore(명단 학생·선생님만)와 칠판 링크용 사본(열쇠 링크)에만.
@@ -98,8 +98,8 @@ python tools/deploy/deploy.py "작업물/<이름>"                 ← 엔진 �
 ```
 <교과서> Ⅱ단원(소단원 5개, 화면 64장)을 만들었어요.
 칠판(로그인 없이): https://….web.app/board.html?k=… — 반 밖으로 공유 금지
-학생(아이패드·클래스룸): https://….web.app/student.html — 칠판 「수업 도구 › 학생 접속 QR」로 띄우기
-선생님 기록: https://….web.app/teacher.html — 설정에서 새 반 · 명렬표 붙여 넣기 한 번
+학생(아이패드·클래스룸): https://….web.app/student.html?j=… — 칠판 「수업 도구 › 학생 접속 QR」로 띄우기. 학생이 로그인하면 명단에 저절로
+선생님 기록: https://….web.app/teacher.html — 학교 계정이 아닌 학생만 설정에서 「받기」
 칠판에서 학생 기능(즉석 질문·학습지)을 쓰려면: 「반 선택」 → 휴대폰 QR로 열기 (한 학기 유지)
 수업 전 점검: 1) 전자칠판 즐겨찾기 2) 학생 한 명 미리 로그인 3) 수업 뒤 칠판 로그아웃
 직접 못 해 본 것: 실제 전자칠판 터치, 애플펜슬 필압
@@ -116,7 +116,7 @@ python tools/deploy/deploy.py "작업물/<이름>"                 ← 엔진 �
 
 1. **준비물 확인·설치는 Code가 한다**: `python --version`(없으면 https://python.org 안내), `node --version`(없으면 `winget install OpenJS.NodeJS.LTS` 제안),
    `pip install pymupdf pillow playwright && python -m playwright install chromium`. 실패한 것만 선생님께 한 줄로 알린다.
-2. 이 저장소가 아직 PC에 없으면: `git clone <링크> "%USERPROFILE%\Desktop\디지털교과서공방"` → 그 폴더를 작업 폴더로 연다(이후 이 CLAUDE.md를 따른다).
+2. 이 저장소가 아직 PC에 없으면: `git clone <링크> "%USERPROFILE%\Desktop\수업잇기"` → 그 폴더를 작업 폴더로 연다(이후 이 CLAUDE.md를 따른다).
 3. PDF를 `교과서_넣는곳/`에 복사 → §0(예시 화면 → 범위·방향 질문) → §1~6 → 첫 소단원 관문 → 나머지 → §7 배포 → §8 링크.
 4. 선생님께 부탁하는 것은 **구글 로그인과 「허용」, 첫 소단원 확인** 두 가지뿐. 콘솔 클릭·명령어 입력을 선생님께 시키지 않는다.
 

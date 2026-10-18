@@ -38,7 +38,7 @@ def main():
     if not pid:
         pid = 'dt-' + time.strftime('%y%m%d') + '-' + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
         print('새 프로젝트 만드는 중:', pid, flush=True)
-        r = subprocess.run('npx -y firebase-tools projects:create %s --display-name "디지털 교과서" --non-interactive' % pid, shell=True, cwd=ROOT)
+        r = subprocess.run('npx -y firebase-tools projects:create %s --display-name "수업잇기" --non-interactive' % pid, shell=True, cwd=ROOT)
         if r.returncode != 0:
             sys.exit('프로젝트를 만들지 못했어요. 학교 계정에서 프로젝트 만들기가 막혀 있거나, 무료 프로젝트 수 한도일 수 있어요. '
                      '개인 구글 계정으로 다시 로그인하거나 --project 로 이미 있는 프로젝트를 쓰세요.')
@@ -73,7 +73,7 @@ def main():
     else:
         print('\n[브라우저 단계] 구글 로그인 켜기 — Code가 직접 누른다:')
         print('  https://console.firebase.google.com/project/%s/authentication/providers' % pid)
-        print('  「시작하기」 → Google → 사용 설정 → 공개 이름 「디지털 교과서」, 지원 이메일 = 선생님 계정 → 저장')
+        print('  「시작하기」 → Google → 사용 설정 → 공개 이름 「수업잇기」, 지원 이메일 = 선생님 계정 → 저장')
     print('\n다음:  python tools/deploy/deploy.py "%s"' % a.course)
 
 

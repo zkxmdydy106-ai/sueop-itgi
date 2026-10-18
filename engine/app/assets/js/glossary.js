@@ -1,4 +1,4 @@
-/* 디지털교과서 엔진 · glossary.js — 핵심어 눌러 뜻 보기
+/* 수업잇기 엔진 · glossary.js — 핵심어 눌러 뜻 보기
    textbook.glossary = [{ term, def, page(처음 나온 쪽), screen(그 개념 화면 id) }]
    수업 화면의 굵은 핵심어(.term)와 교과서 원본 쪽 위의 용어 자리(textbook.terms) 어디서든 같은 말풍선이 뜬다. */
 (function () {

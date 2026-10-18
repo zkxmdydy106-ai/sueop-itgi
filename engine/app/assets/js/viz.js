@@ -1,4 +1,4 @@
-/* 디지털교과서 엔진 · viz.js — 글로만 된 개념도 눈으로 보이게
+/* 수업잇기 엔진 · viz.js — 글로만 된 개념도 눈으로 보이게
    content 블록 { t:'viz', kind:'flow'|'cycle'|'compare'|'timeline'|'venn'|'map'|'graph', ..., stepwise:true }
    stepwise면 칠판에서 '다음'을 누를 때마다 한 칸씩 열린다(단계 열기와 같은 방식). */
 (function () {

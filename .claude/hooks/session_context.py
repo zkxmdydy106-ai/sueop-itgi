@@ -53,7 +53,7 @@ def main():
             parts.append("교과서_넣는곳/의 새 PDF(아직 작업 폴더 없음): " + ", ".join(new[:10]))
     parts.append("교과서 작업이면 textbook-webapp 스킬을 먼저 읽는다.")
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
-                                             "additionalContext": "[디지털교과서공방]\n" + "\n\n".join(parts)}}, ensure_ascii=False))
+                                             "additionalContext": "[수업잇기]\n" + "\n\n".join(parts)}}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

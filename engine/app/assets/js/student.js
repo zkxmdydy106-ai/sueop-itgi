@@ -1,4 +1,4 @@
-/* 디지털교과서 엔진 · student.js — 학생 화면 (아이패드)
+/* 수업잇기 엔진 · student.js — 학생 화면 (아이패드)
    한 번에 한 가지: 로그인 → 홈(해야 할 학습지) → 한 문항씩 풀기 → 결과.  수업 중에는 아래에 이해도 신호. */
 (function () {
   'use strict';
@@ -22,23 +22,26 @@
 
   /* ── 시작 ── */
   async function start() {
+    const j = DT.qs().j; if (j) DT.store.set('st.join', j);   /* 학생 링크 코드 — 구글 로그인으로 화면이 바뀌어도 기억 */
     try { await DT.data.init(); } catch (e) { return err('연결하지 못했어요. 와이파이를 확인하고 새로 고침해 주세요.'); }
     S.me = DT.data.user();
+    if (S.me && S.me.role === 'pending') return waitApproval();
+    if (S.me && S.me.role === 'guest' && DT.store.get('st.join', '')) return joinForm();
     if (!S.me || S.me.role !== 'student') return login();
     await syncFixed().catch(() => {});
     await enter();
   }
-  function err(msg) { const m = shell('디지털교과서'); m.append(DT.el('div', { class: 'empty' }, DT.el('b', null, '열 수 없어요'), DT.el('span', null, msg))); }
+  function err(msg) { const m = shell('수업잇기'); m.append(DT.el('div', { class: 'empty' }, DT.el('b', null, '열 수 없어요'), DT.el('span', null, msg))); }
 
   async function login() {
-    const m = shell('디지털교과서');
+    const m = shell('수업잇기');
     const brand = DT.el('div', { class: 'login__brand' }, DT.el('span', { class: 'pill' }, '학생용'), DT.el('h1', null, '오늘 배울 내용과', DT.el('br'), '학습지가 여기 있어요'), DT.el('p', null, '선생님이 보낸 학습지를 풀고, 수업 중에는 이해했는지 신호를 보낼 수 있어요.'));
     const card = DT.el('div', { class: 'login__card' });
     if (DT.data.mode === 'firebase') {
       card.append(DT.el('h2', null, '학교 구글 계정으로 시작'),
-        DT.el('button', { class: 'gbtn', type: 'button', html: ICON_G + '구글 계정으로 로그인', onclick: async () => { try { const u = await DT.data.signIn(); if (u && u.role === 'student') { S.me = u; enter(); } else if (u) { DT.toast(u.email + ' 계정은 이 반 명단에 없어요. 선생님께 알려 주세요.', 'bad'); } } catch (e) { DT.toast('로그인하지 못했어요: ' + (e.message || e), 'bad'); } } }),
+        DT.el('button', { class: 'gbtn', type: 'button', html: ICON_G + '구글 계정으로 로그인', onclick: async () => { try { const u = await DT.data.signIn(); if (u && u.role === 'student') { S.me = u; enter(); } else if (u && u.role === 'pending') { S.me = u; waitApproval(); } else if (u && DT.store.get('st.join', '')) { S.me = u; joinForm(); } else if (u) { DT.toast(u.email + ' 계정은 아직 명단에 없어요. 선생님이 보여 준 QR이나 클래스룸 링크로 들어와 주세요.', 'bad'); } } catch (e) { DT.toast('로그인하지 못했어요: ' + (e.message || e), 'bad'); } } }),
         DT.el('p', { class: 'login__note' }, '한 번 로그인하면 이 아이패드에서는 다음부터 바로 열려요. 이름과 답은 우리 반 선생님만 볼 수 있어요.'));
-      if (S.me && S.me.role === 'guest') card.append(DT.el('div', { class: 'fb fb--bad' }, S.me.email + ' 계정은 이 반 명단에 없어요. 다른 계정으로 로그인하거나 선생님께 알려 주세요.'));
+      if (S.me && S.me.role === 'guest') card.append(DT.el('div', { class: 'fb fb--bad' }, S.me.email + ' 계정은 아직 명단에 없어요. 선생님이 보여 준 QR이나 클래스룸 링크로 다시 들어오면 명단에 저절로 들어가요.'));
     } else {
       const roster = await DT.data.listStudentsForPicker();
       const classes = await DT.data.listClasses();
@@ -55,6 +58,43 @@
       paint();
     }
     m.append(DT.el('div', { class: 'login' }, brand, card));
+  }
+
+  /* 학생 링크(?j=)로 처음 들어온 학생: 학년·반·번호·이름만 적으면 명단에 들어간다 (선생님이 명단을 넣지 않아도 됨) */
+  function joinForm() {
+    const m = shell('수업잇기');
+    const g = DT.el('select', { class: 'select', 'aria-label': '학년' }, [1, 2, 3].map((n) => DT.el('option', { value: String(n) }, n + '학년')));
+    const num = (ph, max) => DT.el('input', { class: 'input', type: 'number', inputmode: 'numeric', min: '1', max: String(max), placeholder: ph, 'aria-label': ph });
+    const c = num('반', 20), n = num('번호', 60);
+    const nm = DT.el('input', { class: 'input', maxlength: '20', placeholder: '이름', 'aria-label': '이름', value: S.me.name && !String(S.me.name).includes('@') ? S.me.name : '' });
+    const prev = DT.el('p', { class: 'join-prev' });
+    const val = () => ({ g: +g.value, c: parseInt(c.value, 10), n: parseInt(n.value, 10), name: nm.value.trim() });
+    const ok = (v) => v.c >= 1 && v.c <= 20 && v.n >= 1 && v.n <= 60 && v.name;
+    const paint = () => { const v = val(); prev.textContent = ok(v) ? v.g + '학년 ' + v.c + '반 ' + v.n + '번 ' + v.name : '학년·반·번호·이름을 적어 주세요'; prev.classList.toggle('is-ready', !!ok(v)); };
+    [g, c, n, nm].forEach((x) => (x.oninput = paint)); g.onchange = paint; paint();
+    const go = DT.el('button', { class: 'btn btn--ink btn--lg', type: 'button' }, '우리 반에 들어가기');
+    go.onclick = async () => {
+      const v = val(); if (!ok(v)) return DT.toast('학년·반·번호·이름을 모두 적어 주세요.', 'bad');
+      go.disabled = true;
+      try {
+        const u = await DT.data.joinClass({ code: DT.store.get('st.join', ''), classId: v.g + '학년-' + v.c + '반', no: String(v.g) + String(v.c).padStart(2, '0') + String(v.n).padStart(2, '0'), name: v.name });
+        S.me = u; DT.store.del('st.join');
+        if (u && u.role === 'student') { await syncFixed().catch(() => {}); await enter(); } else waitApproval();
+      } catch (e) { go.disabled = false; DT.toast('들어가지 못했어요. 링크가 바뀌었거나 선생님이 새 학생 받기를 닫았어요. 선생님께 새 QR을 받아 주세요.', 'bad'); }
+    };
+    const card = DT.el('div', { class: 'login__card' }, DT.el('h2', null, '처음 한 번만 적어요'),
+      DT.el('div', { class: 'join-row' }, g, c, n), nm, prev, go,
+      DT.el('p', { class: 'login__note' }, S.me.email + ' 계정으로 들어가요. ', DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', onclick: async () => { await DT.data.signOut(); location.reload(); } }, '다른 계정으로')));
+    m.append(DT.el('div', { class: 'login' }, DT.el('div', { class: 'login__brand' }, DT.el('span', { class: 'pill' }, '학생용'), DT.el('h1', null, '반가워요!'), DT.el('p', null, '학년·반·번호와 이름을 적으면 우리 반 명단에 들어가요. 다음부터는 바로 열려요.')), card));
+  }
+  /* 학교 계정이 아닌 계정: 선생님이 「받기」를 누르면 저절로 열린다 */
+  function waitApproval() {
+    const m = shell('수업잇기');
+    const head = DT.el('b', null, '선생님이 받아 주면 바로 열려요');
+    m.append(DT.el('div', { class: 'empty' }, head,
+      DT.el('span', null, S.me.email + ' 은 학교 계정이 아니어서 선생님 확인이 필요해요. 이 화면을 켜 두면 저절로 열려요. 학교 구글 계정으로 들어오면 바로 열려요.'),
+      DT.el('button', { class: 'btn', type: 'button', style: { justifySelf: 'center', alignSelf: 'center' }, onclick: async () => { await DT.data.signOut(); location.reload(); } }, '다른 계정으로 로그인')));
+    if (DT.data.onMe) { const off = DT.data.onMe((d) => { if (d && d.ok !== false) { off(); location.reload(); } else if (!d) { off(); head.textContent = '선생님이 명단에서 뺐어요. 선생님께 여쭤 보세요.'; } }); }
   }
 
   async function enter() {
@@ -354,17 +394,19 @@
   }
 
   /* ── 내 필기 (애플펜슬): 이 기기 + 내 계정에 저장 → 다른 아이패드에서도 그대로 ── */
-  const myT = {};
   function myInk(key) {
     const lk = 'my.' + C.courseId + '.' + S.me.key + '.' + key; const sc = 'stu_' + S.me.key;
     return {
       load: () => DT.store.get(lk, []),
-      save: (st) => { DT.store.set(lk, st); DT.store.set(lk + '.t', Date.now()); clearTimeout(myT[key]); myT[key] = setTimeout(() => DT.data.saveInk(sc, key, st).catch(() => {}), 1200); },
+      save: (st) => { DT.store.set(lk, st); DT.store.set(lk + '.t', Date.now()); DT.later('my:' + key, () => DT.data.saveInk(sc, key, st).catch(() => {})); },
       /* 다른 기기에서 쓴 필기가 더 최근이면 그것으로 (계정에 저장된 시각 vs 이 기기에 저장한 시각) */
       async sync(surf) {
         if (DT.data.mode !== 'firebase' || !DT.data.getInkAt) return null;
-        const r = await DT.data.getInkAt(sc, key).catch(() => null); if (!r) return null;
-        if ((r.at || 0) > DT.store.get(lk + '.t', 0)) { DT.store.set(lk, r.st); DT.store.set(lk + '.t', r.at); if (surf) surf.set(r.st); return r.st; }
+        const r = await DT.data.getInkAt(sc, key).catch(() => undefined); if (r === undefined) return null;
+        const lt = DT.store.get(lk + '.t', 0);
+        if (r && (r.at || 0) > lt) { DT.store.set(lk, r.st); DT.store.set(lk + '.t', r.at); if (surf) surf.set(r.st); return r.st; }
+        /* 이 기기 것이 더 최근인데 서버에 못 올라갔으면 지금 올린다 */
+        if (lt > ((r && r.at) || 0)) DT.data.saveInk(sc, key, DT.store.get(lk, [])).catch(() => {});
         return null;
       }
     };

@@ -23,6 +23,25 @@ def run(cmd, cwd=None):
         sys.exit('멈춤: 위 단계에서 오류가 났어요.')
 
 
+def ensure_join(course, project, key):
+    """학생 링크 코드(student.html?j=코드). 이 코드로 들어온 학생은 로그인하면 명단에 저절로 들어간다.
+    코드는 작업물/<이름>/.joincode 에 둔다(올라가지 않음). 선생님이 「닫기」 한 것은 다시 열지 않는다."""
+    import secrets, time, urllib.error, urllib.request
+    sys.path.insert(0, os.path.join(ROOT, 'tools', 'deploy'))
+    from upload_course import token, put
+    jp = os.path.join(course, '.joincode')
+    if not os.path.exists(jp): open(jp, 'w').write(secrets.token_urlsafe(9))
+    code = open(jp).read().strip(); tok = token()
+    url = 'https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/join/%s' % (project, code)
+    try: urllib.request.urlopen(urllib.request.Request(url, headers={'Authorization': 'Bearer ' + tok}), timeout=30).read()
+    except urllib.error.HTTPError as e:
+        if e.code != 404: raise
+        put(tok, project, 'join/' + code, {'open': True, 'at': int(time.time() * 1000)})
+    put(tok, project, 'config/join', {'code': code})                       # 선생님 화면·QR 로그인한 칠판이 읽음
+    if key: put(tok, project, 'shared/%s/meta/join' % key, {'code': code})  # 로그인 없는 칠판의 「학생 접속 QR」이 읽음
+    return code
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('course'); ap.add_argument('--teacher', action='append'); ap.add_argument('--skip-upload', action='store_true')
     a = ap.parse_args()
@@ -48,8 +67,9 @@ def main():
     project = json.load(open(os.path.join(course, '.firebaserc'), encoding='utf-8'))['projects']['default']
     key = open(os.path.join(course, '.sharekey')).read().strip() if os.path.exists(os.path.join(course, '.sharekey')) else ''
     base = 'https://%s.web.app' % project
+    code = ensure_join(course, project, key)
     links = ['칠판 (로그인 없이): %s/board.html?k=%s' % (base, key) if key else '칠판: %s/board.html' % base,
-             '학생 (아이패드·클래스룸): %s/student.html' % base,
+             '학생 (아이패드·클래스룸 — 로그인하면 명단에 저절로): %s/student.html?j=%s' % (base, code),
              '선생님 기록: %s/teacher.html' % base]
     open(os.path.join(course, '링크.txt'), 'w', encoding='utf-8').write('\n'.join(links) + '\n\n칠판 링크는 반 밖으로 공유하지 마세요 (교과서 저작권).\n')
     print('\n배포 완료\n' + '\n'.join(links))

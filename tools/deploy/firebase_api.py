@@ -55,7 +55,7 @@ def main():
         out = sys.argv[3]
         apps = call('GET', 'https://firebase.googleapis.com/v1beta1/projects/%s/webApps' % project, tok=tok).get('apps') or []
         if not apps:
-            call('POST', 'https://firebase.googleapis.com/v1beta1/projects/%s/webApps' % project, {'displayName': 'digital-textbook'}, tok)
+            call('POST', 'https://firebase.googleapis.com/v1beta1/projects/%s/webApps' % project, {'displayName': 'sueop-itgi'}, tok)
             for _ in range(20):
                 time.sleep(3)
                 apps = call('GET', 'https://firebase.googleapis.com/v1beta1/projects/%s/webApps' % project, tok=tok).get('apps') or []

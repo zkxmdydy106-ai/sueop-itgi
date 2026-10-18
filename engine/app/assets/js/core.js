@@ -1,4 +1,4 @@
-/* 디지털교과서 엔진 · core.js
+/* 수업잇기 엔진 · core.js
    공통 도구: DOM, 저장소, 글 표기(수식·핵심어), 아이콘, 알림·모달, 날짜.
    모든 화면(board/student/teacher)이 가장 먼저 불러온다. */
 (function () {
@@ -38,6 +38,8 @@
   DT.loadScript = (src) => new Promise((ok, no) => {
     const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('불러오지 못함: ' + src)); document.head.append(s);
   });
+  /* 학생 링크: student.html?j=코드 — 이 코드로 들어온 학생은 로그인하면 명단에 저절로 들어간다 */
+  DT.studentLink = (code) => { const u = new URL('student.html', location.href); u.search = code ? '?j=' + encodeURIComponent(code) : ''; u.hash = ''; return u.href; };
   DT.qs = () => {
     const out = {};
     const add = (str) => str.replace(/^[?#]/, '').split('&').forEach((kv) => { if (!kv) return; const [k, v = ''] = kv.split('='); out[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' ')); });
@@ -47,6 +49,19 @@
 
   /* ── 저장소 (없어도 동작) ───────────────────────────── */
   const mem = {};
+  /* 서버 저장 모아 보내기 — 손을 멈추고 몇 초 뒤 한 번, 화면을 떠나거나 앱을 내릴 때는 바로.
+     (무료 한도: 하루 쓰기 2만 번. 이 기기에는 그때그때 저장되므로 잃는 것은 없다) */
+  DT.later = (() => {
+    const q = {};
+    const run = (k) => { const t = q[k]; if (!t) return; delete q[k]; clearTimeout(t.id); try { t.fn(); } catch (e) {} };
+    const flush = () => Object.keys(q).forEach(run);
+    addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+    addEventListener('pagehide', flush);
+    const later = (k, fn, ms) => { if (q[k]) clearTimeout(q[k].id); q[k] = { fn, id: setTimeout(() => run(k), ms || 6000) }; };
+    later.flush = flush;
+    return later;
+  })();
+
   DT.store = {
     get(k, d) { try { const v = localStorage.getItem('dt.' + k); return v == null ? (k in mem ? mem[k] : d) : JSON.parse(v); } catch (e) { return k in mem ? mem[k] : d; } },
     set(k, v) { mem[k] = v; try { localStorage.setItem('dt.' + k, JSON.stringify(v)); } catch (e) { /* 저장 공간 없음: 메모리에만 */ } },

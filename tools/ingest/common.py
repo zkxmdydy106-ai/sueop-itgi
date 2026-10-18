@@ -10,7 +10,7 @@ def load_content(path):
 
 def save_content(path, tb, note=''):
     with open(path, 'w', encoding='utf-8') as f:
-        f.write('/* %s */\n' % (note or '교과서 내용 — 디지털교과서공방이 만든 파일. 화면 문장은 교과서 그대로 옮긴다.'))
+        f.write('/* %s */\n' % (note or '교과서 내용 — 수업잇기가 만든 파일. 화면 문장은 교과서 그대로 옮긴다.'))
         f.write('window.TEXTBOOK = ' + json.dumps(tb, ensure_ascii=False, indent=1) + ';\n')
 
 

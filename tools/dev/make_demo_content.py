@@ -142,7 +142,7 @@ subunit = {
 
 TB = {
   'meta': {'title': '예시 교과서 · 기하', 'subject': '수학', 'course': '기하', 'publisher': '엔진 시험용 예시 (실제 교과서 아님)', 'curriculum': '2022 개정',
-           'source': '이 예시는 디지털교과서공방이 엔진 시험을 위해 새로 쓴 글과 그림입니다.', 'demo': True},
+           'source': '이 예시는 수업잇기가 엔진 시험을 위해 새로 쓴 글과 그림입니다.', 'demo': True},
   'pages': {'pattern': 'pages/p{n}.webp', 'pad': 3, 'from': 70, 'to': 77, 'ratio': 1.414, 'pairing': 'even-left'},
   'units': [{'id': 'u2', 'no': 'Ⅱ', 'title': '공간도형과 공간좌표', 'children': [{'id': 'u2-1', 'no': '1', 'title': '공간도형', 'children': [subunit]}]}],
   'hotspots': {'74': [{'x': 0.06, 'y': 0.4, 'w': 0.6, 'h': 0.12, 'lab': 'projection', 'label': '3D로 보기', 'title': '정사영의 길이', 'props': {'mode': 'segment', 'angle': 30}, 'theme': THEME}],

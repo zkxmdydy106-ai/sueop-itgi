@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Claude Code 훅: 디지털 교과서 자동 검증 (학교웹앱공방 verify_web_hook을 교과서용으로 고친 것)
+"""Claude Code 훅: 수업잇기 자동 검증 (학교웹앱공방 verify_web_hook을 교과서용으로 고친 것)
 
 post (PostToolUse, Write|Edit):
   - 작업물/<교과서>/content/content.js 를 고치면 → tools/verify/check_content.py (형식·수식·그림·모형)

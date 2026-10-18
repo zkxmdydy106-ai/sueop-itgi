@@ -1,4 +1,4 @@
-/* 디지털교과서 엔진 · board.js — 전자칠판 수업 화면
+/* 수업잇기 엔진 · board.js — 전자칠판 수업 화면
    평소: 교과서 내용 + 넘기기 + 판서 + 교과서 원본 탭.  나머지는 '수업 도구' 하나 안에. */
 (function () {
   'use strict';
@@ -61,8 +61,9 @@
   DT.on('extra', openExtra);
 
   /* 학생 접속 QR (로그인 없이도 띄울 수 있음) */
-  function studentQR() {
-    const url = new URL('student.html', location.href).href;
+  async function studentQR() {
+    const code = DT.data.joinCode ? await DT.data.joinCode().catch(() => '') : '';
+    const url = DT.studentLink(code);
     const share = 'https://classroom.google.com/share?url=' + encodeURIComponent(url);
     DT.modal({ title: '학생 접속', wide: true, body: DT.el('div', { style: { display: 'grid', justifyItems: 'center', gap: '12px', textAlign: 'center' } },
       DT.chart.qr(url, 380), DT.el('b', { style: { fontSize: '26px' } }, '아이패드 카메라로 찍으세요'), DT.el('code', { style: { fontSize: '18px' } }, url)),
@@ -217,12 +218,11 @@
   }
   /* 판서 저장: 이 기기 + 계정(Firestore). 반 없이 연 화면은 '준비' 판서 → 반으로 열면 그 위에서 시작 */
   const scope = () => S.classId || 'prep';
-  const remoteTimers = {};
   function inkIO(key) {
     const lk = (sc) => DT.ink.storeKey(C.courseId, sc, key);
     return {
       load() { const mine = DT.store.get(lk(scope()), null); if (mine) return mine; return scope() !== 'prep' ? DT.store.get(lk('prep'), []) : []; },
-      save(st) { const sc = scope(); DT.store.set(lk(sc), st); DT.store.set(lk(sc) + '.t', Date.now()); clearTimeout(remoteTimers[sc + key]); remoteTimers[sc + key] = setTimeout(() => DT.data.saveInk(sc, key, st).catch(() => {}), 1200); },
+      save(st) { const sc = scope(); DT.store.set(lk(sc), st); DT.store.set(lk(sc) + '.t', Date.now()); DT.later('ink:' + sc + ':' + key, () => DT.data.saveInk(sc, key, st).catch(() => {})); },
       /* 계정에 저장된 판서가 이 기기 것보다 최근이면(다른 칠판·PC에서 썼으면) 그것으로 바꾼다 */
       async sync(surf) {
         if (DT.data.mode !== 'firebase') return null;
@@ -230,6 +230,8 @@
         let r = DT.data.getInkAt ? await DT.data.getInkAt(sc, key).catch(() => null) : null;
         if (!r && !local && sc !== 'prep') { const p = await DT.data.getInk('prep', key).catch(() => null); if (p) r = { st: p, at: 1 }; }
         if (r && (r.at || 0) > lt && JSON.stringify(r.st) !== JSON.stringify(local || [])) { DT.store.set(lk(sc), r.st); DT.store.set(lk(sc) + '.t', r.at || Date.now()); if (surf && surf.set) surf.set(r.st); return r.st; }
+        /* 이 기기 것이 더 최근인데 서버에 못 올라갔으면(창을 바로 닫음·인터넷 끊김) 지금 올린다 */
+        if (local && lt > ((r && r.at) || 0)) DT.data.saveInk(sc, key, local).catch(() => {});
         return null;
       }
     };

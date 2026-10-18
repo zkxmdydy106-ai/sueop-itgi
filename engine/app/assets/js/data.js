@@ -1,4 +1,4 @@
-/* 디지털교과서 엔진 · data.js
+/* 수업잇기 엔진 · data.js
    기록 저장 계층. 화면 코드는 DT.data의 함수만 쓴다.
    - demo 모드: 이 브라우저 안에만 저장(체험·미리보기). 탭끼리 실시간으로 이어진다.
    - firebase 모드: 구글 로그인 + Firestore. 우리 반 명단에 있는 계정만 교과서와 기록을 볼 수 있다(보안 규칙).
@@ -87,6 +87,12 @@
       async saveClass(c) { return upsert('classes', c); },
       async getRoster(classId) { return col('roster').filter((r) => !classId || r.classId === classId).sort((a, b) => a.no.localeCompare(b.no)); },
       async saveRoster(classId, rows) { db.roster = col('roster').filter((r) => r.classId !== classId).concat(rows.map((r) => Object.assign({ key: 's' + r.no, classId }, r))); changed('roster'); },
+      async listPending() { return []; },
+      async approveMember() {},
+      async removeMember(key) { db.roster = col('roster').filter((r) => r.key !== key); changed('roster'); },
+      async joinCode() { return ''; },
+      async joinOpen() { return null; },
+      async setJoinOpen() {},
       /* 학습지 */
       async createAssignment(a) { a.id = a.id || DT.uid('a'); a.createdAt = a.createdAt || Date.now(); a.status = a.status || 'open'; return upsert('assignments', a); },
       async updateAssignment(id, patch) { return upsert('assignments', Object.assign({ id }, patch)); },
@@ -171,7 +177,7 @@
       const teachers = ((tdoc && tdoc.exists && tdoc.data().emails) || []).map(emailKey).concat((C.teacherEmails || []).map(emailKey));
       if (teachers.includes(email)) { me = { role: 'teacher', key: email, email, name: u.displayName || '선생님' }; return me; }
       const m = await fs.collection('members').doc(email).get().catch(() => null);
-      if (m && m.exists) { const d = m.data(); me = { role: 'student', key: email, email, name: d.name, no: d.no, classId: d.classId }; return me; }
+      if (m && m.exists) { const d = m.data(); me = { role: d.ok === false ? 'pending' : 'student', key: email, email, name: d.name, no: d.no, classId: d.classId }; return me; }
       me = { role: 'guest', key: email, email, name: u.displayName || email };
       return me;
     }
@@ -238,11 +244,19 @@
           progress && progress(++done, files.length);
         }
       },
-      async listClasses() { return docs(await fs.collection('classes').get()); },
+      async listClasses() {
+        const list = docs(await fs.collection('classes').get());
+        if (me && me.role === 'teacher') {   /* 학생이 학생 링크로 들어오며 고른 반이 아직 없으면 만든다 */
+          const self = docs(await fs.collection('members').where('self', '==', true).get().catch(() => ({ docs: [] })));
+          const miss = [...new Set(self.map((x) => x.classId))].filter((id) => id && !list.find((c) => c.id === id));
+          for (const id of miss) { const c = { id, name: id.replace('-', ' ') }; await fs.collection('classes').doc(id).set(c).catch(() => {}); list.push(c); }
+        }
+        return list.sort((a, b) => String(a.id).localeCompare(String(b.id), 'ko', { numeric: true }));
+      },
       async saveClass(c) { await fs.collection('classes').doc(c.id).set(c, { merge: true }); return c; },
       async getRoster(classId) {
         let q = fs.collection('members'); if (classId) q = q.where('classId', '==', classId);
-        return docs(await q.get()).map((d) => Object.assign({ key: d.id, email: d.id }, d)).sort((a, b) => String(a.no).localeCompare(String(b.no)));
+        return docs(await q.get()).filter((d) => d.ok !== false).map((d) => Object.assign({ key: d.id, email: d.id }, d)).sort((a, b) => String(a.no).localeCompare(String(b.no)));
       },
       async saveRoster(classId, rows) {
         const old = await api.getRoster(classId); const batch = fs.batch();
@@ -250,6 +264,20 @@
         rows.forEach((r) => batch.set(fs.collection('members').doc(emailKey(r.email)), { no: String(r.no), name: r.name, classId }));
         await batch.commit();
       },
+      /* 학생 스스로 명단에 들어오기 (학생 링크 ?j=코드). 학교 계정이면 바로, 아니면 선생님이 받아 줄 때까지 기다림 */
+      async joinClass(j) {
+        const u = auth.currentUser; const ref = fs.collection('members').doc(emailKey(u.email));
+        const d = { no: j.no, name: j.name, classId: j.classId, code: j.code, at: ts(), self: true };
+        try { await ref.set(Object.assign({ ok: true }, d)); } catch (e) { await ref.set(Object.assign({ ok: false }, d)); }
+        return resolveUser(u);
+      },
+      onMe(cb) { return fs.collection('members').doc(me.key).onSnapshot((d) => cb(d.exists ? d.data() : null), () => {}); },
+      async listPending() { return docs(await fs.collection('members').where('ok', '==', false).get()).map((d) => Object.assign({ key: d.id, email: d.id }, d)); },
+      async approveMember(key) { await fs.collection('members').doc(key).set({ ok: true }, { merge: true }); },
+      async removeMember(key) { await fs.collection('members').doc(key).delete(); },
+      async joinCode() { const d = await fs.collection('config').doc('join').get().catch(() => null); return d && d.exists ? d.data().code || '' : ''; },
+      async joinOpen() { const c = await api.joinCode(); if (!c) return null; const d = await fs.collection('join').doc(c).get().catch(() => null); return d && d.exists ? d.data().open !== false : null; },
+      async setJoinOpen(open) { const c = await api.joinCode(); if (c) await fs.collection('join').doc(c).set({ open: !!open }, { merge: true }); },
       async createAssignment(a) {
         a.id = a.id || DT.uid('a'); a.createdAt = a.createdAt || ts(); a.status = a.status || 'open';
         const per = a.perStudent; const head = Object.assign({}, a); delete head.perStudent; if (per) head.hasPer = true;
@@ -340,6 +368,7 @@
       return v;
     }
     api.mode = 'local';
+    api.joinCode = async function () { return (await field('/meta/join', 'code')) || ''; };
     api.getCourse = async function () {
       if (window.TEXTBOOK) return window.TEXTBOOK;
       const n = await field('', 'parts'); if (!n) throw new Error('수업 링크가 맞지 않아요. 선생님께 받은 칠판 링크를 그대로 열어 주세요.');

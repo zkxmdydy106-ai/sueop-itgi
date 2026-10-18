@@ -1,4 +1,4 @@
-/* 디지털교과서 엔진 · lab.js — 3D·실험실
+/* 수업잇기 엔진 · lab.js — 3D·실험실
    교과서의 그림·실험·개념을 손으로 돌리고 바꿔 보는 모형을 전체 화면으로 연다.
    모형 하나 = DT.lab.register('이름', { title, build(ctx) }).  build 안에서 ctx로 3D 장면과 조절 막대를 만든다.
    - 교과서 그림과 같은 톤: content의 theme(평면 색·선 색·글자 모양)을 ctx.theme으로 받는다.

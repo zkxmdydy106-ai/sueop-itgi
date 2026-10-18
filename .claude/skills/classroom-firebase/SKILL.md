@@ -1,6 +1,6 @@
 ---
 name: classroom-firebase
-description: 디지털 교과서를 실제 반에서 쓰도록 Firebase(구글 로그인·Firestore·호스팅)에 올리는 순서 — 선생님이 콘솔에서 누를 것, prepare_firebase.py·배포 명령, 교과서 올리기·명렬표, 무료 한도, 기록 보관·학년말 정리. "배포해줘", "학생들이 쓰게", "로그인", "기록이 남게" 같은 말에 읽는다.
+description: 수업잇기를 실제 반에서 쓰도록 Firebase(구글 로그인·Firestore·호스팅)에 올리는 순서 — 선생님이 콘솔에서 누를 것, prepare_firebase.py·배포 명령, 교과서 올리기·명렬표, 무료 한도, 기록 보관·학년말 정리. "배포해줘", "학생들이 쓰게", "로그인", "기록이 남게" 같은 말에 읽는다.
 ---
 
 # Firebase로 반에서 쓰기
@@ -15,7 +15,7 @@ npx -y firebase-tools login --reauth          # 터미널 탭(run_in_terminal). 
 python tools/deploy/new_server.py "작업물/<이름>" --teacher 선생님@학교.kr      # 프로젝트·Firestore 서울·익명 로그인·웹 앱 설정 → firebaseConfig.txt, deploy.json
 python tools/deploy/deploy.py "작업물/<이름>"                                    # 엔진·규칙·호스팅·교과서(반 명단용 + 칠판 링크용) → 링크.txt
 ```
-- `new_server.py`가 **[브라우저 단계]**를 출력하면 Code가 콘솔(Authentication › 로그인 방법)에서 Google을 켠다. 공개 이름 「디지털 교과서」, 지원 이메일 = 선생님.
+- `new_server.py`가 **[브라우저 단계]**를 출력하면 Code가 콘솔(Authentication › 로그인 방법)에서 Google을 켠다. 공개 이름 「수업잇기」, 지원 이메일 = 선생님.
 - 학교 계정이 프로젝트 만들기를 막으면 → 선생님 개인 구글 계정으로 로그인해 만들고, `--teacher`에는 학교 계정을 넣는다(로그인은 학교 계정, 서버 주인은 개인 계정).
 - 익명 로그인은 **칠판 QR 로그인**에 쓴다: 칠판에 QR → 선생님 휴대폰으로 찍고 「이 칠판 열기」 → 그 칠판은 120일 동안 선생님 권한(`boardGrants`). 칠판 세션은 teacher.html(학생 기록)을 열 수 없다.
 - 교과서를 고치거나 쪽을 더 만들면 `deploy.py`만 다시. 바뀐 것만 올라가고 링크·기록은 그대로.
@@ -47,15 +47,18 @@ cd "작업물/<이름>"
 npx firebase-tools login          ← 선생님이 브라우저에서 한 번 허락 (Code는 기다린다)
 npx firebase-tools deploy --only hosting,firestore
 ```
-- `prepare_firebase.py`: config.js를 firebase 모드로, `firestore.rules`의 `__TEACHERS__`에 선생님 계정, `.firebaserc` 작성.
+- `prepare_firebase.py`: config.js를 firebase 모드로, `firestore.rules`의 `__TEACHERS__`에 선생님 계정, `__DOMAINS__`에 학교 계정 주소(선생님 계정의 @ 뒤, gmail 등 공용 주소 제외), `.firebaserc` 작성.
+- `deploy.py`는 학생 링크 코드(`작업물/<이름>/.joincode`, `join/{코드}`)도 만든다 → 학생 링크 `student.html?j=코드`. 선생님이 「닫기」 한 것은 다시 열지 않는다.
 - 배포가 보안 규칙을 컴파일한다 — 규칙 오류가 나면 배포가 멈추니 메시지를 읽고 고친다.
 - 끝나면 주소: `https://<projectId>.web.app` — 칠판 `/board.html`, 학생 `/student.html`, 선생님 `/teacher.html`.
 - 선생님을 더 넣을 때: `--teacher`를 모두 다시 주고 prepare → deploy.
 
 ## 3. 배포 뒤 선생님이 할 일 (선생님 화면 › 설정)
 1. 교과서 올리기는 **하지 않아도 된다** — `deploy.py`가 자동으로 올린다(버튼은 직접 올려야 할 때만).
-2. **새 반** → 반 이름 → **명렬표 붙여 넣기**: 엑셀에서 `학번 · 이름 · 구글 계정` 세 칸을 복사해 붙여 넣기.
-3. **학생에게 링크 주기** → 칠판 「수업 도구 › 학생 접속 QR」(로그인 없이도 됨) 또는 「클래스룸에 올리기」.
+2. **명단은 넣지 않는다.** 학생이 학생 링크(`?j=코드`)로 들어와 구글 로그인 → 학년·반·번호·이름 → 명단(`members`, `self: true`)과 반(`classes`)이 저절로 생긴다.
+   학교 계정 주소면 바로, 아니면 `ok: false`(기다림) → 선생님 화면 › 설정 「받기」. 다 들어오면 「새 학생 받기 › 닫기」(링크가 새도 못 들어옴).
+   명렬표 붙여 넣기는 선택(한꺼번에 넣고 싶을 때만).
+3. **학생에게 링크 주기** → 칠판 「수업 도구 › 학생 접속 QR」(로그인 없이도 됨, 코드가 들어 있음) 또는 「클래스룸에 올리기」.
 4. 처음 수업 전에: 시크릿 창으로 학생 주소를 열어 **로그인 없이 교과서가 안 보이는지** 확인.
 
 ## 4. 무료 한도 (Spark — 바뀔 수 있으니 콘솔 › 사용량에서 확인)
@@ -81,7 +84,8 @@ npx firebase-tools deploy --only hosting,firestore
 |---|---|
 | 로그인 창이 바로 닫힘 | 아이패드 Safari 팝업 차단 → 엔진이 자동으로 전체 화면 로그인(redirect)으로 바꾼다. 그래도 안 되면 설정 › Safari › 팝업 차단 끄기 |
 | "선생님 명단에 없어요" | prepare_firebase의 `--teacher` 계정과 로그인한 계정이 다름(대소문자 무관) → 다시 prepare + deploy |
-| 학생이 "명단에 없어요" | 명렬표의 구글 계정 오타 / 학생이 개인 계정으로 로그인 |
+| 학생이 "명단에 없어요" | 코드 없는 주소(`student.html`만)로 들어옴 → 칠판 학생 QR이나 링크.txt의 학생 주소로 / 「새 학생 받기」가 닫힘 |
+| 학생이 "선생님이 받아 주면 열려요" | 학교 계정이 아닌 계정 → 선생님 화면 › 설정 「받기」, 또는 학교 계정으로 다시 로그인 |
 | 교과서가 안 보임 | 교과서 올리기를 안 했거나 courseId가 다름(config.js) |
 | `auth/unauthorized-domain` | 다른 주소로 열었음 → Authentication › 설정 › 승인된 도메인에 그 주소 추가 |
 | 쓰기 거부(permission-denied) | 보안 규칙 — 콘솔 › Firestore › 규칙에 배포된 내용이 최신인지 |

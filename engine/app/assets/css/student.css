@@ -218,3 +218,10 @@
   .wsheet { box-shadow: none; max-width: none; padding: 0; border-radius: 0; }
   .wsheet__item { break-inside: avoid; cursor: default; }
 }
+
+/* 처음 들어온 학생: 학년·반·번호 */
+.join-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 10px; }
+.join-row .select, .join-row .input, .login__card > .input { min-height: 52px; font-size: 18px; }
+.join-prev { margin: 0; padding: 12px 14px; border-radius: var(--r-m); background: var(--paper-2, #F6F1E7); color: var(--ink-2); font-size: 17px; }
+.join-prev.is-ready { background: var(--accent-wash); color: var(--ink); font-weight: 700; }
+.login__card > .btn--lg { min-height: 56px; font-size: 19px; }
