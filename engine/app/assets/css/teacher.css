@@ -188,9 +188,39 @@
   .st-grid { grid-template-columns: repeat(4, 1fr); }
   .prof { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
 }
+/* 휴대폰: 메뉴는 아래 탭 줄, 내용은 한 줄로 쌓고 위아래로 내려 본다 */
 @media (max-width: 760px) {
-  .tc { grid-template-columns: 64px 1fr; }
-  .tc-nav__btn span:not(.badge), .tc-nav__foot .btn span { display: none; }
+  .tc { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .tc-main { order: 1; }
+  .tc-nav { order: 2; flex-direction: row; gap: 0; padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); border-right: 0; border-top: 1px solid var(--line); overflow-x: auto; }
+  .tc-brand, .tc-nav__foot, .tc-nav__sep { display: none; }
+  .tc-nav__btn { position: relative; flex: 1 0 auto; min-width: 54px; flex-direction: column; justify-content: center; gap: 2px; min-height: 54px; padding: 4px 4px; font-size: 11px; border-radius: 12px; text-align: center; }
+  .tc-nav__btn span { white-space: nowrap; }
+  .tc-nav__btn .badge { position: absolute; top: 2px; right: 4px; margin: 0; min-width: 18px; padding: 0 5px; font-size: 10.5px; line-height: 18px; }
+  .tc-top { flex-wrap: wrap; gap: 8px; padding: 10px 14px; min-height: 0; }
+  .tc-top h1 { font-size: 20px; width: 100%; margin: 0; }
+  .tc-top .chips { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  .chip, .btn { white-space: nowrap; }
+  .tc-view { overflow-y: auto; overflow-x: hidden; padding: 14px 14px 24px; gap: 12px; }
+  .home-grid, .as-wrap, .res-grid, .check, .prof, .set-grid { display: grid; grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: none !important; grid-template-areas: none !important; grid-auto-rows: auto; flex: none; overflow: visible; }
+  .home-grid > *, .prof > *, .check > *, .as-wrap > * { grid-area: auto !important; grid-column: auto !important; grid-row: auto !important; }
+  .card, .home-grid .card, .prof .card { overflow: visible; min-height: 0; }
+  .kpis, .prof__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none !important; grid-auto-rows: auto; flex: none; }
+  .todo { grid-template-columns: auto 1fr; }
+  .todo > :last-child { grid-column: 1 / -1; }
+  .arow { grid-template-columns: minmax(0, 1fr) 64px 48px; gap: 8px; }
+  .qgrid { overflow-x: auto; }
+  .wiz__scope { grid-template-columns: repeat(2, 1fr); max-height: none; }
+  .hbar { grid-template-columns: minmax(70px, 1fr) 1.4fr 64px; }
+  .tc-view > *, .tc-view .card { flex: none !important; height: auto !important; max-height: none !important; }
+  .tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }
+  .tbl thead { display: none; }
+  .tbl tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .tbl td { padding: 2px 0; border: 0; }
+  .tbl td:first-child { font-weight: 800; }
+  .tbl td, .tbl th { white-space: normal !important; overflow: visible; text-overflow: clip; max-width: none; }
+  .tbl td > *, .tbl .clip { -webkit-line-clamp: unset; display: block; white-space: normal; }
 }
 
 /* 들어오려는 학생 · 명단 보기 */
