@@ -16,6 +16,7 @@ python tools/deploy/new_server.py "작업물/<이름>" --teacher 선생님@학�
 python tools/deploy/deploy.py "작업물/<이름>"                                    # 엔진·규칙·호스팅·교과서(반 명단용 + 칠판 링크용) → 링크.txt
 ```
 - `new_server.py`가 **[브라우저 단계]**를 출력하면 Code가 콘솔(Authentication › 로그인 방법)에서 Google을 켠다. 공개 이름 「수업잇기」, 지원 이메일 = 선생님.
+- **아이폰 사파리 로그인(필수)**: 구글 클라우드 콘솔 › Google 인증 플랫폼 › 클라이언트 › 'Web client (auto created by Google Service)' › 승인된 리디렉션 URI에 `https://<프로젝트>.web.app/__/auth/handler` 추가·저장(Code가 브라우저로) → `config.js`의 `authHere: true` → deploy. 안 하면 아이폰에서 'missing initial state' 오류.
 - 학교 계정이 프로젝트 만들기를 막으면 → 선생님 개인 구글 계정으로 로그인해 만들고, `--teacher`에는 학교 계정을 넣는다(로그인은 학교 계정, 서버 주인은 개인 계정).
 - 익명 로그인은 **칠판 QR 로그인**에 쓴다: 칠판에 QR → 선생님 휴대폰으로 찍고 「이 칠판 열기」 → 그 칠판은 120일 동안 선생님 권한(`boardGrants`). 칠판 세션은 teacher.html(학생 기록)을 열 수 없다.
 - 교과서를 고치거나 쪽을 더 만들면 `deploy.py`만 다시. 바뀐 것만 올라가고 링크·기록은 그대로.

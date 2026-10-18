@@ -187,7 +187,11 @@
         await DT.loadScript(SDK + 'firebase-app-compat.js');
         await DT.loadScript(SDK + 'firebase-auth-compat.js');
         await DT.loadScript(SDK + 'firebase-firestore-compat.js');
-        if (!firebase.apps.length) firebase.initializeApp(C.firebase);
+        /* 아이폰 사파리는 다른 주소(firebaseapp.com)로 로그인하면 'missing initial state'로 깨진다 → 이 사이트 주소로 로그인
+           (구글 클라우드 OAuth 클라이언트에 https://<이 주소>/__/auth/handler 가 등록돼 있어야 해서 config의 authHere 로 켠다) */
+        const fcfg = Object.assign({}, C.firebase);
+        if (C.authHere && /\.(web\.app|firebaseapp\.com)$/.test(location.hostname)) fcfg.authDomain = location.host;
+        if (!firebase.apps.length) firebase.initializeApp(fcfg);
         fs = firebase.firestore(); auth = firebase.auth();
         await new Promise((ok) => { const off = auth.onAuthStateChanged(async (u) => { off(); await resolveUser(u); ok(); }); });
       },

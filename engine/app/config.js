@@ -13,5 +13,6 @@ window.DT_CONFIG = {
   theme: 'paper',
   extras: [],
   teacherEmails: [],
+  authHere: false,  // true: 로그인을 이 사이트 주소로(아이폰 사파리 필수). 구글 클라우드 OAuth 클라이언트에 https://<프로젝트>.web.app/__/auth/handler 등록 뒤 켠다
   firebase: null
 };
