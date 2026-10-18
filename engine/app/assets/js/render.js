@@ -128,7 +128,7 @@
           DT.el('span', null, '학생은 학번·이름, 참관 선생님은 「선생님 참관용」에 체크하고 시작해요.'),
           DT.el('div', { class: 'b-extra__btns' },
             btn('play', '칠판에서 해 보기', () => DT.emit('extra-play', { url, title: ex.title }), true),
-            ...(DT.chart ? ex.live || [] : []).filter((l) => !/모음/.test(l.label)).map((l) => btn('signal', l.label, () => window.open(l.url, '_blank'))))));
+            ...(DT.chart ? ex.live || [] : []).filter((l) => !/모음/.test(l.label)).map((l) => btn('signal', l.label, () => DT.emit('extra-play', { url: l.url, title: l.label, full: true }))))));
         break;
       }
       case 'cols': {

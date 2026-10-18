@@ -29,14 +29,16 @@
     return m;
   }
   /* 활동을 칠판 위에 크게 띄워 직접 해 보기 (닫기 한 번) */
-  function playExtra(url, title) {
+  function playExtra(url, title, full) {
     const root = DT.el('div', { class: 'overlay', role: 'dialog', 'aria-label': title || '활동', style: { position: 'fixed', inset: '0', zIndex: '60', background: 'var(--desk)', display: 'grid', gridTemplateRows: 'auto 1fr' } });
-    const close = DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('x') + '닫기', onclick: () => root.remove() });
-    root.append(DT.el('div', { class: 'overlay__bar', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--paper)' } }, DT.el('h2', { class: 'overlay__title', style: { margin: 0 } }, title || '활동'), close),
+    const close = DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('x') + '닫기', onclick: () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); root.remove(); } });
+    const other = DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('expand') + '안 보이면 새 창으로', onclick: () => window.open(url, '_blank') });
+    root.append(DT.el('div', { class: 'overlay__bar', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--paper)' } }, DT.el('h2', { class: 'overlay__title', style: { margin: 0 } }, title || '활동'), DT.el('div', { style: { display: 'flex', gap: '8px' } }, other, close)),
       DT.el('iframe', { src: url, title: title || '활동', allow: 'fullscreen; accelerometer; gyroscope', style: { width: '100%', height: '100%', border: '0', background: '#fff' } }));
     document.body.append(root);
+    if (full && root.requestFullscreen) root.requestFullscreen().catch(() => {});   /* 실시간 화면은 전체 화면으로 */
   }
-  DT.on('extra-play', (o) => playExtra(o.url, o.title));
+  DT.on('extra-play', (o) => playExtra(o.url, o.title, o.full));
 
   /* 학생 접속 QR (로그인 없이도 띄울 수 있음) */
   async function studentQR() {
