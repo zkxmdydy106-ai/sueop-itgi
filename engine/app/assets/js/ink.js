@@ -175,6 +175,10 @@
     const tools = [
       ['hand', 'hand', '손 · 판서 끄기 (Esc)'], ['pen', 'pen', '펜 (P)'], ['marker', 'marker', '형광펜 (H)'], ['eraser', 'eraser', '지우개 (E)'], ['laser', 'laser', '레이저 (L)']
     ];
+    /* 도구 줄 접기: 펜은 그대로 쓰면서 왼쪽 도구 줄만 숨겨 교과서 글을 가리지 않게 */
+    const mini = DT.el('button', { class: 'inkbar__mini', type: 'button', title: '도구 줄 접기 (펜은 그대로)', 'aria-label': '도구 줄 접기', html: DT.icon('shrink') + '<span>접기</span>' });
+    mini.addEventListener('click', () => { wrap.dataset.mini = 'true'; });
+    panel.append(mini);
     const tbtn = {};
     tools.forEach(([id, ic, label]) => {
       const b = DT.el('button', { class: 'inkbar__tool', type: 'button', title: label, 'aria-label': label, html: DT.icon(ic) });
@@ -211,7 +215,7 @@
     host.append(wrap);
 
     function setOpen(v) { wrap.dataset.open = v ? 'true' : 'false'; main.setAttribute('aria-expanded', v ? 'true' : 'false'); if (!v) Ink.set({ tool: 'hand' }); else if (Ink.state.tool === 'hand') Ink.set({ tool: 'pen' }); }
-    main.addEventListener('click', () => setOpen(wrap.dataset.open !== 'true'));
+    main.addEventListener('click', () => { if (wrap.dataset.mini === 'true') { wrap.dataset.mini = 'false'; return; } setOpen(wrap.dataset.open !== 'true'); });
     function sync() {
       Object.entries(tbtn).forEach(([id, b]) => b.setAttribute('aria-pressed', Ink.state.tool === id ? 'true' : 'false'));
       DT.$$('.inkbar__size', sizes).forEach((b, i) => b.classList.toggle('is-on', Ink.sizes[i] === Ink.state.size));
