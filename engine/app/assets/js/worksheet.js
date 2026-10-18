@@ -16,7 +16,7 @@
     { id: 'self', name: '자기평가', desc: '성취기준별로 스스로 점검', icon: 'target' },
     { id: 'career', name: '진로 탐구', desc: '교과서 속 탐구 거리 추천 + 내 탐구 계획', icon: 'compass' }
   ];
-  W.kindName = (k) => (W.kinds.find((x) => x.id === k) || { name: k === 'review' ? '복습' : '학습지' }).name;
+  W.kindName = (k) => (W.kinds.find((x) => x.id === k) || { name: k === 'review' ? '복습' : k === 'custom' ? '직접 만든 학습지' : '학습지' }).name;
   W.levels = ['잘할 수 있어요', '조금 도움이 필요해요', '아직 어려워요'];
   W.roles = [
     { id: 'lead', name: '진행', desc: '순서를 지키며 모두가 말하게 해요' },

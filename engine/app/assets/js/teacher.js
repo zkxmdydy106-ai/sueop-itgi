@@ -171,6 +171,7 @@
     const acts = DT.el('div', { class: 'row' }, tabs, DT.el('span', { class: 'grow' }),
       DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('refresh') + '틀린 학생에게 복습', onclick: () => sendReview(a.scope) }),
       DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('download') + '엑셀(CSV)', onclick: () => csvOf(a, subs) }),
+      a.items && a.items.length ? DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('print') + '인쇄', onclick: () => DT.ws.print(a, cls().name) }) : null,
       DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', onclick: async () => { await DT.data.updateAssignment(a.id, { status: a.status === 'closed' ? 'open' : 'closed' }); a.status = a.status === 'closed' ? 'open' : 'closed'; worksheets(); } }, a.status === 'closed' ? '다시 열기' : '마감하기'));
     d.append(acts);
     if (T.tab === 'check') d.append(checkPanel(a, pend));
@@ -275,7 +276,27 @@
     const f = (t, n) => DT.el('div', { class: 'field' }, DT.el('span', null, t), n);
     box.append(f('1. 교과서 범위', DT.el('div', { style: { display: 'grid', gap: '8px' } }, subSel, scope)), f('2. 무엇을', kinds), f('3. ' + cls().name + ' · 언제까지', dues), prev);
     paintScope(); paintPrev();
-    DT.modal({ title: '학습지 보내기', body: box, wide: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(T.tb, [...picked], kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } }, { label: cls().name + '에 보내기', kind: 'ink', icon: 'send', onClick: async (close) => {
+    const dueTime = () => { const d = new Date(); if (due === 'tomorrow') d.setDate(d.getDate() + 1); if (due === 'week') d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0); return d.getTime(); };
+    async function sendW(w, close) {
+      if (!w.items.length) return DT.toast('문항이 없어요.', 'bad');
+      if (w.items.some((it) => it.type === 'group') && !w.groups) w.groups = await DT.data.getGroups(T.classId);
+      await DT.data.createAssignment(Object.assign(w, { classId: T.classId, courseId: C.courseId, due: dueTime() }));
+      close(); await loadAll(); T.aid = T.assignments[0] && T.assignments[0].id; T.tab = 'result'; route('worksheets'); DT.toast(cls().name + '에 보냈어요. 학생 화면에 바로 나타나요.');
+    }
+    /* 직접 만들기·고치기: 자동으로 만든 것에서 시작해 빈칸·순서·문제를 바꾼다 */
+    function editW(close0) {
+      const w = DT.ws.build(T.tb, [...picked], kind); w.kind = 'custom';
+      const pool = DT.ws.pool(T.tb, [...picked]);
+      close0();
+      DT.modal({ title: '학습지 직접 만들기', body: DT.ws.editor(w, pool), wide: true, cls: 'modal--tall modal--xl', sticky: true, actions: [{ label: '닫기' },
+        { label: '미리 보기', icon: 'eye', onClick: () => (w.items.length ? DT.ws.openPreview(w) : DT.toast('문항이 없어요.', 'bad')) },
+        { label: '인쇄', icon: 'print', onClick: () => (w.items.length ? DT.ws.print(w, cls().name) : DT.toast('문항이 없어요.', 'bad')) },
+        { label: cls().name + '에 보내기', kind: 'ink', icon: 'send', onClick: (close) => sendW(w, close) }] });
+    }
+    DT.modal({ title: '학습지 보내기', body: box, wide: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(T.tb, [...picked], kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } },
+      { label: '인쇄', icon: 'print', onClick: () => { const w = DT.ws.build(T.tb, [...picked], kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.print(w, cls().name); } },
+      { label: '직접 만들기·고치기', icon: 'pencil', onClick: (close) => editW(close) },
+      { label: cls().name + '에 보내기', kind: 'ink', icon: 'send', onClick: async (close) => {
       const w = DT.ws.build(T.tb, [...picked], kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad');
       const d = new Date(); if (due === 'tomorrow') d.setDate(d.getDate() + 1); if (due === 'week') d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0);
       if (kind === 'group') w.groups = await DT.data.getGroups(T.classId);
@@ -490,7 +511,7 @@
     const c4 = card('처음 쓰는 선생님께', null);
     c4.append(DT.el('ol', { style: { margin: 0, paddingLeft: '1.2em', display: 'grid', gap: '8px', fontSize: '15px', lineHeight: '1.6' } },
       DT.el('li', null, DT.el('b', null, '수업: '), '「전자칠판 열기」 → 반 고르기 → 화살표로 넘기며 수업. 왼쪽 아래 「판서」, 오른쪽 탭 「교과서」.'),
-      DT.el('li', null, DT.el('b', null, '학습지: '), '오른쪽 위 「학습지 보내기」 → 범위·종류·기한만 고르면 끝. 결과는 「학습지」 메뉴에 저절로 모여요.'),
+      DT.el('li', null, DT.el('b', null, '학습지: '), '오른쪽 위 「학습지 보내기」 → 범위·종류·기한만 고르면 끝. 「직접 만들기·고치기」로 빈칸·순서·내 문제를 바꾸고, 「인쇄」로 종이 학습지도 뽑아요. 결과는 「학습지」 메뉴에 저절로 모여요.'),
       DT.el('li', null, DT.el('b', null, '기록: '), '「학생」에서 한 명을 누르면 학기 전체 기록. 「기록 내보내기」에서 생기부 근거와 담임 공유 자료를 받아요.')));
     const cx = DT.extras.list().map((ex) => {
       const c = card(ex.title || '연결된 활동', DT.el('span', { class: 'sub' }, '참관·다른 선생님 체험 QR'));

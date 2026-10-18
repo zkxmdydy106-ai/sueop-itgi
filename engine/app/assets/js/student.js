@@ -204,8 +204,7 @@
       m.append(paper);
       const foot = $('.st-foot'); foot.hidden = false; foot.innerHTML = '';
       const left = items.filter((it) => it.type !== 'reflect' && it.type !== 'peer' && isEmpty(ans[it.id])).length;
-      foot.append(DT.el('button', { class: 'btn', type: 'button', html: DT.icon('download') + '인쇄 · PDF로 저장', title: '인쇄 창에서 「PDF로 저장」을 고르면 파일로 저장돼요. 저장한 PDF는 구글 드라이브에 올릴 수 있어요.', onclick: () => window.print() }),
-        DT.el('span', { class: 'wsheet__left' }, done ? '제출했어요' : left ? '아직 ' + left + '문항 남았어요' : '모두 답했어요'), DT.el('span', { style: { flex: '1' } }));
+      foot.append(DT.el('span', { class: 'wsheet__left' }, done ? '제출했어요' : left ? '아직 ' + left + '문항 남았어요' : '모두 답했어요'), DT.el('span', { style: { flex: '1' } }));
       if (!done && !opts.readOnly) foot.append(DT.el('button', { class: 'btn btn--accent', type: 'button', html: DT.icon('send') + '제출하기', onclick: submit }));
       else foot.append(DT.el('button', { class: 'btn btn--ink', type: 'button', html: '결과 보기', onclick: () => result(a) }));
       paintLiveBar(true);
@@ -376,7 +375,7 @@
     });
     m.append(DT.el('div', { class: 'result' }, leftC, DT.el('div', null, chips, detail)));
     const foot = $('.st-foot'); foot.hidden = false; foot.innerHTML = '';
-    foot.append(DT.el('button', { class: 'btn', type: 'button', html: DT.icon('list') + '내 학습지 한 장으로 보기 · 인쇄', onclick: () => run(a, null, { readOnly: true }) }), DT.el('span', { style: { flex: '1' } }), DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('home') + '처음으로', onclick: home }));
+    foot.append(DT.el('button', { class: 'btn', type: 'button', html: DT.icon('list') + '내 학습지 한 장으로 보기', onclick: () => run(a, null, { readOnly: true }) }), DT.el('span', { style: { flex: '1' } }), DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('home') + '처음으로', onclick: home }));
   }
 
   /* ── 오답 노트 ── */

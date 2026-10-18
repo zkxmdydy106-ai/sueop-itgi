@@ -166,7 +166,7 @@
 /* 인쇄 (학생 리포트·담임 공유·수업 일지) */
 .print-area { display: none; }
 @media print {
-  .tc { display: none !important; }
+  .tc, .scrim, .toast-wrap, .ctip { display: none !important; }
   .print-area { display: block; font-family: var(--f-text); color: #000; }
   .print-area h1 { font-family: var(--f-head); font-weight: 400; font-size: 22pt; margin: 0 0 4mm; }
   .print-area h2 { font-size: 12.5pt; margin: 6mm 0 2mm; border-bottom: 1px solid #999; padding-bottom: 1mm; }
@@ -229,3 +229,58 @@
 .pend__row:first-of-type { border-top: 0; }
 .pend__row small { grid-column: 1; grid-row: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pend__row .btn { grid-row: 1 / span 2; }
+
+/* 학습지 직접 만들기 */
+.modal--xl { width: min(1180px, 96vw); }
+.wse { display: grid; gap: 12px; }
+.wse-top { display: flex; gap: 10px; align-items: center; }
+.wse-title { font-size: 18px; font-weight: 700; }
+.wse-cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.wse-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; min-height: 120px; }
+.wse-empty { padding: 26px; border: 2px dashed var(--line-2); border-radius: 16px; text-align: center; color: var(--ink-2); }
+.wse-item { background: var(--white); border: 1.5px solid var(--line); border-radius: 16px; padding: 10px 12px; display: grid; gap: 6px; touch-action: auto; }
+.wse-item.is-open { border-color: var(--ink); }
+.wse-item.is-drag { opacity: .55; }
+.wse-item.is-over { box-shadow: 0 -3px 0 var(--accent); }
+.wse-item__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wse-item__lab { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wse-item__sum { color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.wse-handle { cursor: grab; touch-action: none; font-size: 20px; line-height: 1; padding: 6px 4px; color: var(--ink-2); border-radius: 8px; }
+.wse-handle:active { cursor: grabbing; background: var(--paper-2); }
+.wse-blank { font-size: 17px; line-height: 2.1; padding: 8px 10px; background: var(--paper); border-radius: 12px; }
+.wse-word { padding: 1px 3px; border-radius: 6px; border: 1px dashed transparent; }
+.wse-word:hover { border-color: var(--line-2); background: var(--white); }
+.wse-word.is-blank { background: var(--accent-wash); border: 1.5px solid var(--accent); color: var(--accent-ink, var(--accent)); font-weight: 800; padding: 1px 8px; }
+.wse-blank__n { font-size: 13px; color: var(--ink-2); line-height: 1.4; margin-top: 4px; }
+.wse-side { display: grid; gap: 10px; align-content: start; position: sticky; top: 0; }
+.wse-pool { display: grid; gap: 6px; max-height: 52vh; overflow-y: auto; padding-right: 4px; }
+.wse-pitem { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--white); cursor: grab; }
+.wse-pitem__t { display: grid; min-width: 0; }
+.wse-pitem__t b, .wse-pitem__t small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wse-pitem__t small { color: var(--ink-2); }
+.wse-form { display: grid; gap: 8px; }
+@media (max-width: 760px) { .wse-cols { grid-template-columns: minmax(0, 1fr); } .wse-side { position: static; } .wse-pool { max-height: none; } }
+
+/* 종이 학습지 (인쇄) */
+@media print {
+  .wsp { font-family: var(--f-text); color: #000; }
+  .wsp__head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 3mm; margin-bottom: 4mm; }
+  .wsp__head h1 { font-size: 18pt; margin: 1mm 0 0; }
+  .wsp__head small, .wsp__who { font-size: 10pt; }
+  .wsp__list { margin: 0; padding-left: 7mm; display: grid; gap: 5mm; }
+  .wsp__item { break-inside: avoid; font-size: 11pt; line-height: 1.7; }
+  .wsp__lab { font-weight: 800; margin-bottom: 1mm; }
+  .wsp__lab small { font-weight: 400; color: #555; }
+  .wsp__q { margin: 1mm 0; }
+  .wsp__bank { border: 1px solid #999; border-radius: 2mm; padding: 1.5mm 3mm; font-size: 10pt; margin-top: 1mm; }
+  .wsp__choices { display: flex; flex-wrap: wrap; gap: 2mm 8mm; }
+  .wsp__box { height: 32mm; border: 1px solid #999; border-radius: 2mm; margin-top: 1mm; }
+  .wsp__lines { height: 14mm; border-bottom: 1px solid #999; }
+  .wsp__key { color: #c00; font-weight: 700; }
+  .wsp u { color: #c00; text-decoration: underline; font-weight: 700; }
+  .wsp__self { border-collapse: collapse; width: 100%; font-size: 10pt; }
+  .wsp__self th, .wsp__self td { border: 1px solid #999; padding: 1mm 2mm; text-align: center; }
+  .wsp__self td:first-child { text-align: left; }
+  .wsp__figs img { max-height: 45mm; max-width: 80mm; margin: 1mm 2mm 0 0; }
+  .wsp__foot { margin-top: 6mm; font-size: 8.5pt; color: #666; }
+}
