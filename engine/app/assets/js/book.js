@@ -21,6 +21,7 @@
     const PH = Math.round(PW * ratio);
     const evenLeft = pg.pairing !== 'odd-left';
     const inkGet = opt.inkGet || (() => null), inkSave = opt.inkSave || (() => {});
+    const inkSync = opt.inkSync || null;   /* 다른 기기에서 쓴 필기 불러오기 (학생 개인 필기) */
     const notes = opt.notes || null;            /* 선생님만: { get(n) → [], save(n, list) } */
     const english = (tb.meta && tb.meta.subject) === '영어';
 
@@ -194,6 +195,7 @@
       }
       right.hidden = single;
       surface = new DT.ink.Surface(inkHost, single ? PW : PW * 2, PH, { passTo: view, key: keyNow, load: () => inkGet(keyNow), save: (st) => inkSave(keyNow, st) });
+      if (inkSync) { const sNow = surface, kNow = keyNow; inkSync(kNow).then((r) => { if (r && surface === sNow) sNow.set(r); }).catch(() => {}); }
     }
     async function repaint() { const k = startN; startN = null; await show(k); }
     const turn = (d) => { if (busy) return; const step = single ? 1 : 2; if (d < 0 ? startN - 1 < first : startN + step > last) return; setZoom(1); show(startN + d * step, d); };

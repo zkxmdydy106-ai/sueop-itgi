@@ -303,6 +303,7 @@
       },
       async saveInk(classId, surface, strokes) { const s = JSON.stringify(strokes || []); if (s.length > 900000) return; await fs.collection('inks').doc(classId.replace(/[\/.@]/g, '_') + '__' + surface.replace(/[\/.]/g, '_')).set({ classId, surface, strokes: s, at: ts(), owner: me ? me.email : null }); },
       async getInk(classId, surface) { const d = await fs.collection('inks').doc(classId.replace(/[\/.@]/g, '_') + '__' + surface.replace(/[\/.]/g, '_')).get(); return d.exists ? JSON.parse(d.data().strokes || '[]') : null; },
+      async getInkAt(classId, surface) { const d = await fs.collection('inks').doc(classId.replace(/[\/.@]/g, '_') + '__' + surface.replace(/[\/.]/g, '_')).get(); return d.exists ? { st: JSON.parse(d.data().strokes || '[]'), at: d.data().at || 0 } : null; },
       async saveGroups(classId, groups) {
         const ro = await api.getRoster(classId); const names = {}; [].concat(...(groups || [])).forEach((k) => { const r = ro.find((x) => x.key === k); if (r) names[k] = r.name; });
         await fs.collection('groups').doc(classId).set({ classId, groups: JSON.stringify(groups), names, at: ts() });

@@ -91,6 +91,7 @@
     const linkKey = DT.qs().k;
     if (DT.data.mode === 'firebase' && (!me || me.role !== 'teacher') && linkKey) {   /* 칠판 링크: 로그인 없이 수업 */
       DT.dataLogin = DT.data; DT.data = DT.localBoard(linkKey); await DT.data.init(); me = null;
+      setTimeout(() => DT.toast('지금 판서는 이 컴퓨터에만 저장돼요. 오른쪽 위 「휴대폰으로 열기」로 한 번 열면 어느 칠판에서든 자동으로 이어져요.'), 2500);
     }
     if (DT.data.mode === 'firebase' && (!me || me.role !== 'teacher')) return askLogin(me);
     if ((DT.data.mode === 'demo' || DT.data.mode === 'local') && !me) { me = { role: 'teacher', key: 'teacher', name: '선생님' }; await DT.data.signIn(me); }
@@ -151,7 +152,7 @@
     S.classId = id; const c = S.cls.find((x) => x.id === id);
     S.className = c ? c.name : '';
     DT.store.set('board.class.' + C.courseId, id);
-    $('#btnClass').innerHTML = DT.icon('users') + '<span>' + DT.esc(S.className || '반 선택') + '</span>';
+    $('#btnClass').innerHTML = DT.data.mode === 'local' ? DT.icon('qr') + '<span>휴대폰으로 열기</span>' : DT.icon('users') + '<span>' + DT.esc(S.className || '반 선택') + '</span>';
     S.roster = id ? await DT.data.getRoster(id) : [];
     if (id) {
       unsub.push(DT.data.onSignals(id, (rows) => { S.signals = rows; paintLive(); }));
@@ -221,13 +222,15 @@
     const lk = (sc) => DT.ink.storeKey(C.courseId, sc, key);
     return {
       load() { const mine = DT.store.get(lk(scope()), null); if (mine) return mine; return scope() !== 'prep' ? DT.store.get(lk('prep'), []) : []; },
-      save(st) { const sc = scope(); DT.store.set(lk(sc), st); clearTimeout(remoteTimers[sc + key]); remoteTimers[sc + key] = setTimeout(() => DT.data.saveInk(sc, key, st).catch(() => {}), 1200); },
+      save(st) { const sc = scope(); DT.store.set(lk(sc), st); DT.store.set(lk(sc) + '.t', Date.now()); clearTimeout(remoteTimers[sc + key]); remoteTimers[sc + key] = setTimeout(() => DT.data.saveInk(sc, key, st).catch(() => {}), 1200); },
+      /* 계정에 저장된 판서가 이 기기 것보다 최근이면(다른 칠판·PC에서 썼으면) 그것으로 바꾼다 */
       async sync(surf) {
-        if (DT.data.mode !== 'firebase') return;
-        const sc = scope(); const local = DT.store.get(lk(sc), null);
-        let remote = await DT.data.getInk(sc, key).catch(() => null);
-        if (!remote && !local && sc !== 'prep') remote = await DT.data.getInk('prep', key).catch(() => null);
-        if (remote && JSON.stringify(remote) !== JSON.stringify(local || [])) { if (!local || !local.length) { DT.store.set(lk(sc), remote); if (surf && surf.set) surf.set(remote); } }
+        if (DT.data.mode !== 'firebase') return null;
+        const sc = scope(); const local = DT.store.get(lk(sc), null); const lt = DT.store.get(lk(sc) + '.t', 0);
+        let r = DT.data.getInkAt ? await DT.data.getInkAt(sc, key).catch(() => null) : null;
+        if (!r && !local && sc !== 'prep') { const p = await DT.data.getInk('prep', key).catch(() => null); if (p) r = { st: p, at: 1 }; }
+        if (r && (r.at || 0) > lt && JSON.stringify(r.st) !== JSON.stringify(local || [])) { DT.store.set(lk(sc), r.st); DT.store.set(lk(sc) + '.t', r.at || Date.now()); if (surf && surf.set) surf.set(r.st); return r.st; }
+        return null;
       }
     };
   }
@@ -306,7 +309,7 @@
       save: (n, list) => inkIO('notes:' + n).save(list),
       async refresh(n) { if (DT.data.mode !== 'firebase') return false; const before = JSON.stringify(notes.get(n)); await inkIO('notes:' + n).sync(null); return JSON.stringify(notes.get(n)) !== before; }
     };
-    DT.book.open({ start: typeof startAt === 'number' ? startAt : (s.pages || [])[0], inkGet: (key) => inkIO(key).load(), inkSave: (key, st) => inkIO(key).save(st), notes,
+    DT.book.open({ start: typeof startAt === 'number' ? startAt : (s.pages || [])[0], inkGet: (key) => inkIO(key).load(), inkSave: (key, st) => inkIO(key).save(st), inkSync: (key) => inkIO(key).sync(null), notes,
       onScreen: (id) => { const x = S.tb._byId[id]; if (x) go(x._idx, x._idx > S.idx ? 1 : -1); },
       onClose: () => S.surface && S.surface.focus() });
   }

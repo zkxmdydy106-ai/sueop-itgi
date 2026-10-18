@@ -25,6 +25,7 @@
     try { await DT.data.init(); } catch (e) { return err('연결하지 못했어요. 와이파이를 확인하고 새로 고침해 주세요.'); }
     S.me = DT.data.user();
     if (!S.me || S.me.role !== 'student') return login();
+    await syncFixed().catch(() => {});
     await enter();
   }
   function err(msg) { const m = shell('디지털교과서'); m.append(DT.el('div', { class: 'empty' }, DT.el('b', null, '열 수 없어요'), DT.el('span', null, msg))); }
@@ -346,7 +347,7 @@
       m.append(DT.el('div', { class: 'runner' }, box));
       const foot = $('.st-foot'); foot.hidden = false; foot.innerHTML = '';
       foot.append(DT.el('button', { class: 'btn', type: 'button', disabled: i === 0, html: DT.icon('left') + '이전', onclick: () => { i--; paint(); } }), DT.el('span', { style: { flex: '1' } }),
-        DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('check') + '확인하기', onclick: () => { const r = DT.ws.grade(it, ans[it.id]); fb.innerHTML = ''; fb.append(DT.el('div', { class: 'fb ' + (r.correct ? 'fb--ok' : 'fb--bad'), html: r.correct ? '맞았어요. 오답 노트에서 빠져요.' : DT.md(r.feedback) })); if (r.correct) { const fx = DT.store.get('st.fixed.' + S.me.key, {}); fx[it.id] = Date.now(); DT.store.set('st.fixed.' + S.me.key, fx); } } }),
+        DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('check') + '확인하기', onclick: () => { const r = DT.ws.grade(it, ans[it.id]); fb.innerHTML = ''; fb.append(DT.el('div', { class: 'fb ' + (r.correct ? 'fb--ok' : 'fb--bad'), html: r.correct ? '맞았어요. 오답 노트에서 빠져요.' : DT.md(r.feedback) })); if (r.correct) { const fx = DT.store.get('st.fixed.' + S.me.key, {}); fx[it.id] = Date.now(); DT.store.set('st.fixed.' + S.me.key, fx); if (DT.data.mode === 'firebase') DT.data.saveInk('stu_' + S.me.key, 'meta-fixed', fx).catch(() => {}); } } }),
         DT.el('button', { class: 'btn', type: 'button', disabled: i >= list.length - 1, html: '다음' + DT.icon('right'), onclick: () => { i++; paint(); } }));
     }
     paint();
@@ -358,11 +359,26 @@
     const lk = 'my.' + C.courseId + '.' + S.me.key + '.' + key; const sc = 'stu_' + S.me.key;
     return {
       load: () => DT.store.get(lk, []),
-      save: (st) => { DT.store.set(lk, st); clearTimeout(myT[key]); myT[key] = setTimeout(() => DT.data.saveInk(sc, key, st).catch(() => {}), 1200); },
-      async sync(surf) { if (DT.data.mode !== 'firebase') return; const r = await DT.data.getInk(sc, key).catch(() => null); const l = DT.store.get(lk, null); if (r && (!l || !l.length)) { DT.store.set(lk, r); surf && surf.set(r); } }
+      save: (st) => { DT.store.set(lk, st); DT.store.set(lk + '.t', Date.now()); clearTimeout(myT[key]); myT[key] = setTimeout(() => DT.data.saveInk(sc, key, st).catch(() => {}), 1200); },
+      /* 다른 기기에서 쓴 필기가 더 최근이면 그것으로 (계정에 저장된 시각 vs 이 기기에 저장한 시각) */
+      async sync(surf) {
+        if (DT.data.mode !== 'firebase' || !DT.data.getInkAt) return null;
+        const r = await DT.data.getInkAt(sc, key).catch(() => null); if (!r) return null;
+        if ((r.at || 0) > DT.store.get(lk + '.t', 0)) { DT.store.set(lk, r.st); DT.store.set(lk + '.t', r.at); if (surf) surf.set(r.st); return r.st; }
+        return null;
+      }
     };
   }
-  const openBookMine = (n) => DT.book.open({ start: n, inkGet: (k) => myInk(k).load(), inkSave: (k, st) => myInk(k).save(st) });
+  const openBookMine = (n) => DT.book.open({ start: n, inkGet: (k) => myInk(k).load(), inkSave: (k, st) => myInk(k).save(st), inkSync: (k) => myInk(k).sync(null) });
+  /* 오답 노트 '해결' 표시도 계정에 — 다른 아이패드에서 들어와도 같은 목록 */
+  async function syncFixed() {
+    if (DT.data.mode !== 'firebase') return;
+    const k = 'st.fixed.' + S.me.key, sc = 'stu_' + S.me.key;
+    const r = await DT.data.getInk(sc, 'meta-fixed').catch(() => null);
+    const local = DT.store.get(k, {}); const merged = Object.assign({}, r && !Array.isArray(r) ? r : {}, local);
+    DT.store.set(k, merged);
+    if (Object.keys(merged).length > Object.keys(r && !Array.isArray(r) ? r : {}).length) DT.data.saveInk(sc, 'meta-fixed', merged).catch(() => {});
+  }
 
   /* ── 지난 수업 다시 보기 ── */
   async function lessons() {
