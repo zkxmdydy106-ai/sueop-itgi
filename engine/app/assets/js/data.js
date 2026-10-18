@@ -48,7 +48,7 @@
       subs.forEach((s) => { if (s.col === m.col) s.fire(); });
     };
     function col(name) { db[name] = db[name] || []; return db[name]; }
-    function upsert(name, doc) { const a = col(name); const i = a.findIndex((d) => d.id === doc.id); if (i >= 0) a[i] = Object.assign({}, a[i], doc); else a.push(doc); changed(name); return doc; }
+    function upsert(name, doc) { DT.fsCheck(doc, name); const a = col(name); const i = a.findIndex((d) => d.id === doc.id); if (i >= 0) a[i] = Object.assign({}, a[i], doc); else a.push(doc); changed(name); return doc; }
     function listen(name, filter, cb) {
       const s = { col: name, fire: () => cb(col(name).filter(filter)) };
       subs.push(s); setTimeout(s.fire, 0);
@@ -95,11 +95,11 @@
       async joinOpen() { return null; },
       async setJoinOpen() {},
       /* 학습지 */
-      async createAssignment(a) { a.id = a.id || DT.uid('a'); a.createdAt = a.createdAt || Date.now(); a.status = a.status || 'open'; return upsert('assignments', a); },
+      async createAssignment(a) { a.id = a.id || DT.uid('a'); a.createdAt = a.createdAt || Date.now(); a.status = a.status || 'open'; upsert('assignments', packA(a)); return a; },
       async updateAssignment(id, patch) { return upsert('assignments', Object.assign({ id }, patch)); },
-      async listAssignments(f) { f = f || {}; return col('assignments').filter((a) => (!f.classId || a.classId === f.classId)).sort(byTime('createdAt')).reverse(); },
-      async getAssignment(id) { return col('assignments').find((a) => a.id === id) || null; },
-      onAssignments(classId, cb) { return listen('assignments', (a) => a.classId === classId, (rows) => cb(rows.sort(byTime('createdAt')).reverse())); },
+      async listAssignments(f) { f = f || {}; return col('assignments').filter((a) => (!f.classId || a.classId === f.classId)).map(unpackA).sort(byTime('createdAt')).reverse(); },
+      async getAssignment(id) { return unpackA(col('assignments').find((a) => a.id === id) || null); },
+      onAssignments(classId, cb) { return listen('assignments', (a) => a.classId === classId, (rows) => cb(rows.map(unpackA).sort(byTime('createdAt')).reverse())); },
       /* 제출 */
       async saveSubmission(s) { s.id = subId(s.aid, s.key); s.updatedAt = Date.now(); return upsert('submissions', s); },
       async getSubmission(aid, key) { return col('submissions').find((s) => s.id === subId(aid, key)) || null; },
@@ -129,8 +129,8 @@
       async saveInk(classId, surface, strokes) { DT.store.set('ink.' + C.courseId + '.' + classId + '.' + surface, strokes); },
       async getInk(classId, surface) { return DT.store.get('ink.' + C.courseId + '.' + classId + '.' + surface, null); },
       /* 모둠 */
-      async saveGroups(classId, groups) { return upsert('groups', { id: classId, classId, groups, at: Date.now() }); },
-      async getGroups(classId) { const g = col('groups').find((x) => x.id === classId); return g ? g.groups : null; },
+      async saveGroups(classId, groups) { return upsert('groups', { id: classId, classId, groupsJson: JSON.stringify(groups), at: Date.now() }); },
+      async getGroups(classId) { const g = col('groups').find((x) => x.id === classId); return g ? (g.groupsJson ? JSON.parse(g.groupsJson) : g.groups) : null; },
       async getGroupNames(classId) { const n = {}; (await api.getRoster(classId)).forEach((r) => (n[r.key] = r.name)); return n; },
       /* 평가 계획 */
       async getEvalPlan() { return (col('evalPlan')[0] || { id: 'plan', items: [] }); },
@@ -149,6 +149,10 @@
        classes/{id}  courses/{cid}/parts|pages|assets
        assignments  submissions  live  liveAnswers  signals  questions
        observations  lessons  inks  groups  evalPlan                         */
+  /* 모둠(배열 안의 배열)은 서버가 못 받는다 → 글자로 바꿔 저장하고 읽을 때 되돌린다 */
+  const packA = (a) => { if (!a || !Array.isArray(a.groups)) return a; const o = Object.assign({}, a, { groupsJson: JSON.stringify(a.groups) }); delete o.groups; return o; };
+  const unpackA = (a) => { if (a && a.groupsJson && !a.groups) { try { a.groups = JSON.parse(a.groupsJson); } catch (e) {} } return a; };
+
   function FirebaseBackend() {
     const SDK = 'https://www.gstatic.com/firebasejs/10.12.5/';
     let fs, auth, me = null, course = null;
@@ -159,6 +163,7 @@
     const emailKey = (e) => String(e || '').toLowerCase();
     /* 복습 학습지의 학생별 문항: 선생님은 모두, 학생은 자기 것만 붙인다 */
     async function withPer(list) {
+      list.forEach(unpackA);
       await Promise.all(list.filter((a) => a.hasPer).map(async (a) => {
         const col = fs.collection('assignments').doc(a.id).collection('per'); a.perStudent = {};
         if (me && me.role === 'teacher') docs(await col.get()).forEach((d) => (a.perStudent[d.id] = d.items || []));
@@ -195,6 +200,11 @@
         if (!firebase.apps.length) firebase.initializeApp(fcfg);
         fs = firebase.firestore(); try { fs.settings({ ignoreUndefinedProperties: true, merge: true }); } catch (e) {}   /* 빈 칸(undefined)이 섞여도 저장이 막히지 않게 */
         auth = firebase.auth();
+        /* 모든 저장 앞에서 서버 규칙을 먼저 검사 → 무엇이 잘못됐는지 분명히 알린다 */
+        if (!DT._fsPatched) { DT._fsPatched = true; const F = firebase.firestore;
+          const wrap = (proto, name, argi) => { const o = proto[name]; proto[name] = function () { DT.fsCheck(arguments[argi], (this.path || (arguments[0] && arguments[0].path) || 'doc')); return o.apply(this, arguments); }; };
+          wrap(F.DocumentReference.prototype, 'set', 0); wrap(F.DocumentReference.prototype, 'update', 0); wrap(F.CollectionReference.prototype, 'add', 0);
+          wrap(F.WriteBatch.prototype, 'set', 1); wrap(F.WriteBatch.prototype, 'update', 1); }
         await new Promise((ok) => { const off = auth.onAuthStateChanged(async (u) => { off(); await resolveUser(u); ok(); }); });
       },
       user() { return me; },
@@ -292,7 +302,7 @@
       async setJoinOpen(open) { const c = await api.joinCode(); if (c) await fs.collection('join').doc(c).set({ open: !!open }, { merge: true }); },
       async createAssignment(a) {
         a.id = a.id || DT.uid('a'); a.createdAt = a.createdAt || ts(); a.status = a.status || 'open';
-        const per = a.perStudent; const head = Object.assign({}, a); delete head.perStudent; if (per) head.hasPer = true;
+        const per = a.perStudent; const head = packA(Object.assign({}, a)); delete head.perStudent; if (per) head.hasPer = true;
         await fs.collection('assignments').doc(a.id).set(head);
         if (per) { const b = fs.batch(); Object.keys(per).forEach((k) => b.set(fs.collection('assignments').doc(a.id).collection('per').doc(emailKey(k)), { items: per[k] })); await b.commit(); }   /* 학생별 틀린 문제는 본인만 읽는다 */
         return a;

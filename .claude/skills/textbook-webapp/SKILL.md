@@ -54,6 +54,7 @@ python tools/ingest/extract.py "교과서_넣는곳/<파일>.pdf" --out "작업�
 python tools/verify/check_content.py 작업물/<이름>            # 형식·수식·그림·모형  ✗ 0
 python tools/ingest/coverage.py 작업물/<이름>/content --pages 72-76   # 교과서 글 빠짐 0 (머리말·쪽 번호는 --ignore)
 python tools/verify/audit_app.py 작업물/<이름> --shots        # 넘침·오류 0 + 스크린샷
+python tools/verify/flows.py 작업물/<이름>                    # 버튼을 실제로 눌러 봄(학습지·묻기·모둠·학생 제출) + 서버 저장 규칙 → ✗0
 ```
 - 스크린샷(`작업물/<이름>/.review/`)을 **Read로 연다.** 원본 쪽 그림과 나란히 놓고 본다.
 - 병렬로: `content-auditor`(원본 대조), 첫 소단원이면 `first-time-teacher`, 소단원이 3개 이상 쌓이면 `pedagogy-reviewer`.

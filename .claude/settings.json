@@ -42,7 +42,7 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify_web_hook.py\" stop", "timeout": 300 }
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify_web_hook.py\" stop", "timeout": 600 }
         ]
       }
     ]

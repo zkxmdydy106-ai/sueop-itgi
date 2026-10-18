@@ -212,6 +212,33 @@
   };
   DT.iconEl = (name, cls) => { const t = document.createElement('template'); t.innerHTML = DT.icon(name, cls); return t.content.firstChild; };
 
+  /* ── 서버(Firestore) 저장 규칙 검사 ─────────────────
+     체험 모드도 실제 서버와 같은 규칙으로 막아서, 점검(audit·flows)에서 미리 잡는다.
+     Firestore가 거부하는 것: 배열 안의 배열, 함수·특수 객체, 1MiB 넘는 문서 (undefined 는 ignoreUndefinedProperties 로 무시) */
+  DT.fsCheck = function (data, where) {
+    const bad = [];
+    const walk = (v, path, inArr) => {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return;
+      if (typeof v === 'function') return bad.push(path + ': 함수');
+      if (Array.isArray(v)) { if (inArr) bad.push(path + ': 배열 안의 배열'); v.forEach((x, i) => walk(x, path + '[' + i + ']', true)); return; }
+      if (typeof v === 'object') {
+        const pr = Object.getPrototypeOf(v);
+        if (pr !== Object.prototype && pr !== null && !(v instanceof Date) && !(v && v.toMillis)) return bad.push(path + ': 특수 객체');
+        Object.keys(v).forEach((k) => walk(v[k], path + '.' + k, false));
+      }
+    };
+    walk(data, where || 'doc', false);
+    try { if (JSON.stringify(data).length > 1000000) bad.push((where || 'doc') + ': 문서가 1MB를 넘음'); } catch (e) { bad.push((where || 'doc') + ': 저장할 수 없는 값'); }
+    if (bad.length) { const e = new Error('서버에 저장할 수 없는 모양이에요 — ' + bad.slice(0, 3).join(', ')); e.code = 'fs-shape'; throw e; }
+    return data;
+  };
+
+  /* 조용히 실패하지 않게: 처리 안 된 오류는 화면 아래에 알린다 (같은 말은 10초에 한 번) */
+  const errSeen = {};
+  const showErr = (msg) => { msg = String(msg || '').slice(0, 160); if (!msg || /ResizeObserver|Script error|AbortError|NotAllowedError|fullscreen/i.test(msg)) return; const t = Date.now(); if (errSeen[msg] && t - errSeen[msg] < 10000) return; errSeen[msg] = t; console.error('[수업잇기]', msg); if (DT.toast && document.body) DT.toast('문제가 생겼어요: ' + msg, 'bad'); };
+  window.addEventListener('unhandledrejection', (e) => showErr(e.reason && (e.reason.message || e.reason.code || e.reason)));
+  window.addEventListener('error', (e) => { if (e.filename && !/\/assets\/js\//.test(e.filename)) return; showErr(e.message); });
+
   /* ── 알림 ───────────────────────────────────────── */
   DT.toast = function (msg, kind) {
     let w = DT.$('.toast-wrap');

@@ -14,6 +14,7 @@ import json, os, subprocess, sys, time
 ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 VERIFY = os.path.join(ROOT, ".claude", "skills", "school-webapp", "lib", "verify_webapp.py")
 CHECK = os.path.join(ROOT, "tools", "verify", "check_content.py")
+FLOWS = os.path.join(ROOT, "tools", "verify", "flows.py")   # 버튼을 실제로 눌러 보는 기능 점검 (서버 저장 규칙 포함)
 LINT = os.path.join(ROOT, ".claude", "hooks", "design_lint.py")
 WEB_EXT = (".html", ".htm", ".js")
 SKIP_DIRS = {"node_modules", ".git", "__pycache__", ".review", "_extract", "vendor", "pages", "figs"}
@@ -137,6 +138,15 @@ def stop(data):
             code, lo = _run([sys.executable, LINT, app], 60)
             if code == 1:
                 tells += lo.count("△")
+    # 엔진이 바뀌었으면 기능 점검: 화면만 보는 검증으로는 '버튼이 조용히 안 되는' 오류를 못 잡는다
+    if any(n == "engine" for n, _, _ in targets) and os.path.exists(FLOWS):
+        course = next((c for _, _, c in targets if c), None)
+        if not course and os.path.isdir(WORK):
+            course = next((os.path.join(WORK, n) for n in sorted(os.listdir(WORK)) if os.path.isdir(os.path.join(WORK, n, "content"))), None)
+        if course:
+            code, out = _run([sys.executable, FLOWS, course, "--quick"], 420)
+            if code not in (0, None):
+                fails.append(("기능 점검(flows) " + os.path.basename(course), out))
     if fails and not data.get("stop_hook_active"):
         msg = "[교과서 검증 훅] 이번 작업에서 바뀐 곳 %d개가 검증에 실패했습니다. 고치거나, 못 고치면 최종 답변에 한계를 밝히세요.\n" % len(fails)
         msg += "\n".join("· %s\n%s" % (n, tail(o, 900)) for n, o in fails)

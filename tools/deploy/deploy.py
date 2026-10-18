@@ -66,7 +66,7 @@ def ensure_join(course, project, key):
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('course'); ap.add_argument('--teacher', action='append'); ap.add_argument('--skip-upload', action='store_true')
+    ap = argparse.ArgumentParser(); ap.add_argument('course'); ap.add_argument('--teacher', action='append'); ap.add_argument('--skip-upload', action='store_true'); ap.add_argument('--skip-check', action='store_true')
     a = ap.parse_args()
     course = os.path.abspath(a.course); name = os.path.basename(course)
     dj = os.path.join(course, 'deploy.json')
@@ -86,6 +86,8 @@ def main():
     project0 = json.load(open(os.path.join(course, '.firebaserc'), encoding='utf-8'))['projects']['default']
     key0 = open(os.path.join(course, '.sharekey')).read().strip() if os.path.exists(os.path.join(course, '.sharekey')) else ''
     bcode = ensure_short(course, conf, project0, key0)
+    if not a.skip_check and os.path.isdir(os.path.join(course, 'content')):   # 올리기 전에 버튼을 실제로 눌러 본다 (서버 저장 규칙 포함)
+        run([py, 'tools/verify/flows.py', course, '--quick'])
     run('npx -y firebase-tools deploy --only hosting,firestore --non-interactive', cwd=course)
     if not a.skip_upload:
         run([py, 'tools/deploy/upload_course.py', course])

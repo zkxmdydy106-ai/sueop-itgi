@@ -28,7 +28,7 @@ design/journal.md    ← 디자인 기록
 2. **폴더** — `python tools/build/new_course.py "<이름>" --subject <과목>` → BRIEF.md 채우기.
 3. **추출** — `python tools/ingest/extract.py <pdf> --out 작업물/<이름>/content` → report.md·쪽 그림을 **Read로 직접 본다** (`textbook-ingest`).
 4. **첫 소단원 하나만** 완성 — 교과서 글 그대로 옮기기(`textbook-content`) + 과목에 맞는 화면·시각화(`subject-pedagogy`, `lab-3d`) + 학습지 거리(문제 채점키·탐구·진로·성취기준).
-5. **검증** — `check_content.py` ✗0 → `coverage.py` 빠짐 0 → `audit_app.py --shots` → 스크린샷을 Read로 본다 → `content-auditor` + `first-time-teacher` 병렬.
+5. **검증** — `check_content.py` ✗0 → `coverage.py` 빠짐 0 → `audit_app.py --shots` → **`flows.py` ✗0 (버튼을 실제로 눌러 봄 · 서버 저장 규칙 검사)** → 스크린샷을 Read로 본다 → `content-auditor` + `first-time-teacher` 병렬.
 6. **⛔ 선생님 확인 (생략 금지)** — 첫 소단원 스크린샷(칠판 화면 2~3장 + 원본 보기 + 3D 모형 + 학생 학습지)을 보여 주고 `AskUserQuestion`으로 묻는다:
    **"이대로 나머지 소단원도 만들까요, 아니면 업그레이드할 점이 있을까요?"** (선택지: 이대로 진행 / 업그레이드할 점 말하기)
    답을 BRIEF.md '결정 기록'에 적는다. 업그레이드면 반영 → 5번 → 다시 묻는다. **답을 받기 전에는 다음 소단원을 만들지 않는다.**
@@ -49,6 +49,7 @@ design/journal.md    ← 디자인 기록
 - **디자인**: 다른 서비스(exploragram 등) 화면을 베끼지 않는다. 엔진의 디자인 언어(종이·잉크·분홍, Jua + SUIT, 책 귀퉁이 탭)를 지킨다. 버튼·문구를 늘리기 전에 "처음 쓰는 선생님이 헷갈릴까?"를 먼저 묻는다.
 - **화면을 보지 않고 "완성"이라고 하지 않는다.** 스크린샷을 Read로 연 뒤에만 전달. 검증 ✗ 0.
 - **학생 정보**: 가상 예시만 앱에 넣는다. 실제 명단·성적 파일은 작업물에 두지 않는다.
+- **엔진 수정 뒤에는 `flows.py`가 ✗0 이어야 한다.** 체험 모드는 실제 서버(Firestore)보다 너그러워서, 화면 점검만으로는 '실제 반에서만 버튼이 조용히 안 되는' 오류를 못 잡는다. 저장은 모두 `DT.fsCheck`(서버 규칙)를 거친다. 배열 안의 배열은 글자(JSON)로 바꿔 저장한다.
 - **엔진 수정**은 `engine/app`에서 하고 `new_course.py "<이름>" --update-engine`으로 반영. 교과서별 `app/`을 직접 고치면 다음 갱신에서 사라진다(교과서 전용 모형은 `app/assets/js/labs/`에 두고 BRIEF에 적는다 → 갱신 뒤 다시 복사).
 
 ## 이 엔진에 있는 것 (요즘 더한 것)
