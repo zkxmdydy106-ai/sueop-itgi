@@ -22,7 +22,16 @@
         ]
       },
       {
-        "source": "**/*.@(js|css|webp)",
+        "source": "**/*.@(js|css|html)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "**/*.webp",
         "headers": [
           {
             "key": "Cache-Control",
