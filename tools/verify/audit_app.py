@@ -38,10 +38,18 @@ async def main():
     root = os.path.abspath(a.course); port = serve(root); base = 'http://127.0.0.1:%d/app/' % port
     shots = os.path.join(root, '.review'); os.makedirs(shots, exist_ok=True)
     fails = []; warns = []
+
+    async def demo_mode(context):   # 배포된(firebase) 교과서도 점검은 이 PC의 content로 — config.js의 mode만 demo로 바꿔 읽는다
+        async def handle(route):
+            r = await route.fetch(); t = await r.text()
+            await route.fulfill(response=r, body=t.replace("mode: 'firebase'", "mode: 'demo'"))
+        await context.route('**/config.js', handle)
+
     async with async_playwright() as p:
         b = await p.chromium.launch()
         ctx = await b.new_context(viewport={'width': 1920, 'height': 1080})
         await ctx.add_init_script("try{localStorage.setItem('dt.board.coached','true')}catch(e){}")
+        await demo_mode(ctx)
         pg = await ctx.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'favicon' not in m.text else None)
@@ -75,7 +83,7 @@ async def main():
             fails.append('전자칠판 오류: ' + e[:160])
         for url, sizes in (('student.html', [(1180, 820), (820, 1180), (390, 844)]), ('teacher.html', [(1366, 768), (1920, 1080)]), ('index.html', [(390, 844), (1366, 768)])):
             for w, h in sizes:
-                c2 = await b.new_context(viewport={'width': w, 'height': h}); p2 = await c2.new_page(); e2 = []
+                c2 = await b.new_context(viewport={'width': w, 'height': h}); await demo_mode(c2); p2 = await c2.new_page(); e2 = []
                 p2.on('pageerror', lambda e: e2.append(str(e)))
                 await p2.goto(base + url); await p2.wait_for_timeout(1200)
                 ov = await p2.evaluate("() => ({ x: document.documentElement.scrollWidth - innerWidth, y: document.documentElement.scrollHeight - innerHeight })")
