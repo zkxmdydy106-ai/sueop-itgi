@@ -1,0 +1,6 @@
+{
+  "indexes": [
+    { "collectionGroup": "liveAnswers", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "classId", "order": "ASCENDING" }, { "fieldPath": "qid", "order": "ASCENDING" } ] }
+  ],
+  "fieldOverrides": []
+}

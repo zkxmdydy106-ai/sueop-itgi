@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python tools/ingest/*)",
+      "Bash(python tools/verify/*)",
+      "Bash(python tools/build/*)",
+      "Bash(python tools/deploy/prepare_firebase.py*)",
+      "Bash(python .claude/skills/school-webapp/lib/*)",
+      "Bash(python .claude/skills/design-review/lib/*)",
+      "Bash(python .claude/hooks/design_lint.py*)",
+      "Bash(python -m http.server*)",
+      "Bash(python -m playwright*)",
+      "Bash(pip install pymupdf*)",
+      "Bash(pip install playwright*)",
+      "Bash(pip install pillow*)",
+      "Bash(node --version)",
+      "Bash(node --check*)",
+      "Bash(python --version)"
+    ],
+    "deny": [
+      "Read(./**/*.env)",
+      "Read(./**/.clasprc.json)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_context.py\"", "timeout": 20 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify_web_hook.py\" post", "timeout": 120 },
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/design_lint.py\" hook", "timeout": 30 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify_web_hook.py\" stop", "timeout": 300 }
+        ]
+      }
+    ]
+  }
+}

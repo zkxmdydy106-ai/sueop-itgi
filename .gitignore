@@ -1,0 +1,26 @@
+# ── 절대 공개 저장소에 올리지 않는 것 ──
+# 교과서 PDF와, 교과서를 옮긴 내용·쪽 그림 (저작권) / 학생 기록·선생님 계정·서버 설정
+교과서_넣는곳/*
+!교과서_넣는곳/여기에_PDF를_넣어요.txt
+작업물/*
+!작업물/여기에_만든_교과서가_쌓여요.txt
+*.pdf
+firebaseConfig.txt
+deploy.json
+.sharekey
+.upload_state.json
+.firebaserc
+링크.txt
+
+# ── 이 PC에서만 쓰는 것 ──
+.claude/launch.json
+.claude/verify_stamp.txt
+.claude/settings.local.json
+__pycache__/
+*.pyc
+node_modules/
+.review/
+firebase-debug.log
+*.log
+.DS_Store
+Thumbs.db

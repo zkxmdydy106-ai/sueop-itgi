@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>모형 모음 · 디지털교과서</title>
+<link rel="stylesheet" href="assets/vendor/fonts/fonts.css">
+<link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="assets/css/tokens.css"><!-- 공통: word-break: keep-all · prefers-reduced-motion 은 tokens.css -->
+<link rel="stylesheet" href="assets/css/ink.css">
+<link rel="stylesheet" href="assets/css/board.css">
+<link rel="stylesheet" href="assets/css/lab.css">
+<style>
+  body { background: var(--paper); }
+  .gal { height: 100dvh; display: grid; grid-template-rows: auto 1fr; padding: clamp(16px, 3vw, 48px); gap: 24px; }
+  .gal h1 { font-family: var(--f-head); font-weight: 400; font-size: clamp(28px, 3vw, 48px); margin: 0; }
+  .gal p { margin: 4px 0 0; color: var(--ink-2); }
+  .gal__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; align-content: start; }
+  .gal__card { text-align: left; padding: 22px; border-radius: 22px; background: var(--white); border: 1.5px solid var(--line-2); display: grid; gap: 8px; }
+  .gal__card:hover { border-color: var(--ink); }
+  .gal__card b { font-family: var(--f-head); font-weight: 400; font-size: 26px; }
+  .gal__card span { color: var(--ink-2); font-size: 15px; }
+  .gal__card i { font-style: normal; font-size: 13px; font-weight: 800; color: var(--accent-ink); }
+</style>
+</head>
+<body>
+<main class="gal">
+  <header><h1>모형 모음</h1><p>교과서 화면 안의 「3D로 돌려 보기」 단추가 여는 모형들이에요. 수업 전에 미리 돌려 보세요.</p></header>
+  <div class="gal__grid" id="grid"></div>
+</main>
+<script src="config.js"></script>
+<script src="assets/vendor/katex/katex.min.js"></script>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ink.js"></script>
+<script src="assets/js/lab.js"></script>
+<script src="assets/js/labs/projection.js"></script>
+<script src="assets/js/labs/terrain.js"></script>
+<script src="assets/js/labs/orbit.js"></script>
+<script src="assets/js/labs/gas.js"></script>
+<script src="assets/js/labs/vector-ops.js"></script>
+<script src="assets/js/labs/vector-box.js"></script>
+<script src="assets/js/labs/vector-coord.js"></script>
+<script>
+  (function () {
+    const info = {
+      projection: ['수학 · 기하', '두 평면 사이의 각을 바꾸며 정사영의 길이와 넓이가 cosθ배가 되는 것을 확인'],
+      terrain: ['지리 · 지구과학', '산지 지형을 세워 보고 등고선·단면·물 높이를 바꿔 보기'],
+      orbit: ['지구과학', '지구의 공전과 자전축 기울기로 생기는 계절 변화'],
+      gas: ['과학 · 화학 · 물리', '온도와 부피를 바꾸며 기체 분자 운동과 압력 관찰']
+    };
+    const grid = DT.$('#grid');
+    Object.keys(DT.lab.reg).forEach((id) => {
+      const d = DT.lab.reg[id]; const [sub, desc] = info[id] || [d.sub || '', d.desc || ''];
+      grid.append(DT.el('button', { class: 'gal__card', type: 'button', onclick: () => DT.lab.open(id, {}, {}) }, DT.el('i', null, sub), DT.el('b', null, d.title), DT.el('span', null, desc)));
+    });
+    const q = DT.qs(); if (q.open) DT.lab.open(q.open, {}, {});
+  })();
+</script>
+</body>
+</html>

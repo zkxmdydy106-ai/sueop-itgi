@@ -1,0 +1,18 @@
+/* 글꼴을 앱 안에 넣어 두어 학교망에서 외부 글꼴이 막혀도 똑같이 보입니다. SUIT(OFL), Jua(OFL) */
+@font-face{font-family:'SUIT Variable';src:url('SUIT-Variable.woff2') format('woff2-variations');font-weight:100 900;font-style:normal;font-display:swap}
+/* jua-korean-400-normal */
+@font-face {
+  font-family: 'Jua';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('jua/jua-korean-400-normal.woff2') format('woff2');
+}
+/* jua-latin-400-normal */
+@font-face {
+  font-family: 'Jua';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('jua/jua-latin-400-normal.woff2') format('woff2');
+}

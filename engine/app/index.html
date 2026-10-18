@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko" data-subject="수학">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>디지털교과서</title>
+<link rel="stylesheet" href="assets/vendor/fonts/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css"><!-- 공통: word-break: keep-all · prefers-reduced-motion 은 tokens.css -->
+<style>
+  body { background: var(--paper); }
+  .start { height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; padding: clamp(20px, 4vw, 56px); gap: clamp(16px, 3vw, 36px); max-width: 1280px; margin: 0 auto; }
+  .start__head .pill { margin-bottom: 14px; }
+  .start__head h1 { font-family: var(--f-head); font-weight: 400; font-size: clamp(34px, 4.6vw, 64px); line-height: 1.1; margin: 0; letter-spacing: -0.02em; }
+  .start__head p { margin: 10px 0 0; color: var(--ink-2); font-size: clamp(15px, 1.5vw, 19px); }
+  .doors { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: clamp(12px, 1.6vw, 20px); min-height: 0; }
+  .door { position: relative; display: flex; flex-direction: column; gap: 10px; padding: clamp(18px, 2.4vw, 32px); border-radius: 28px; text-decoration: none; color: var(--ink); background: var(--white); border: 1.5px solid var(--line-2); transition: border-color .15s, transform .12s; min-height: 0; overflow: hidden; }
+  .door:hover { border-color: var(--ink); }
+  .door:active { transform: translateY(1px); }
+  .door--main { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .door .ic { width: clamp(34px, 3vw, 46px); height: clamp(34px, 3vw, 46px); }
+  .door b { font-family: var(--f-head); font-weight: 400; font-size: clamp(26px, 2.8vw, 40px); line-height: 1.15; margin-top: auto; }
+  .door span { font-size: clamp(14px, 1.25vw, 17px); opacity: .78; line-height: 1.55; }
+  .door small { font-size: 13px; font-weight: 800; color: var(--accent-ink); }
+  .door--main small { color: var(--mark); }
+  .start__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; color: var(--ink-2); font-size: 14px; }
+  .start__foot a { color: var(--ink); font-weight: 750; }
+  .start__foot .grow { flex: 1; }
+  @media (max-width: 860px) { .doors { grid-template-columns: 1fr; } .door b { margin-top: 6px; } }
+</style>
+</head>
+<body>
+<main class="start">
+  <header class="start__head">
+    <span class="pill" id="course">디지털교과서</span>
+    <h1>어디에서 여시나요?</h1>
+    <p>교과서가 그대로 들어 있는 수업 화면, 학생 학습지, 결과와 기록이 한곳에 이어져 있어요.</p>
+  </header>
+  <nav class="doors" aria-label="화면 고르기">
+    <a class="door door--main" href="board.html" id="dBoard"><small>교실 전자칠판</small><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v12H3zM8 20l4-4 4 4M7 9h6M7 12h9"/></svg><b>수업하기</b><span>반을 고르고 화살표로 넘기며 수업해요. 판서, 교과서 원본, 3D 모형, 학습지 보내기가 모두 여기 있어요.</span></a>
+    <a class="door" href="teacher.html"><small>선생님 PC · 아이패드</small><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6"/></svg><b>결과와 기록</b><span>학습지 결과 확인, 피드백, 학생별 누적 기록, 생기부 근거와 담임 공유 자료.</span></a>
+    <a class="door" href="student.html"><small>학생 아이패드</small><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 21c.8-4 3.8-6.5 7.5-6.5s6.7 2.5 7.5 6.5"/></svg><b>학생 화면</b><span>학교 구글 계정으로 로그인해 학습지를 풀고, 수업 중에는 이해했는지 신호를 보내요.</span></a>
+  </nav>
+  <footer class="start__foot">
+    <span id="mode"></span><span class="grow"></span>
+    <a href="labs.html">모형 모음</a>
+  </footer>
+</main>
+<script src="config.js"></script>
+<script>
+  (function () {
+    var c = window.DT_CONFIG || {};
+    document.getElementById('mode').textContent = c.mode === 'firebase' ? '반 기록이 학교 계정에 저장돼요.' : '지금은 체험 모드예요 — 기록이 이 브라우저 안에만 남아요.';
+    try { var t = JSON.parse(localStorage.getItem('dt.t.class') || 'null'); if (t) document.getElementById('dBoard').href = 'board.html#class=' + encodeURIComponent(t); } catch (e) {}
+  })();
+</script>
+</body>
+</html>

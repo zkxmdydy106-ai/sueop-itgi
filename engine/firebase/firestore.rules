@@ -1,0 +1,89 @@
+rules_version = '2';
+// 디지털교과서 보안 규칙 — 우리 반 명단에 있는 계정만 교과서와 기록을 볼 수 있다.
+// __TEACHERS__ 자리는 tools/deploy/prepare_firebase.py 가 선생님 구글 계정으로 채운다. (직접 고치지 말 것)
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null && ('email' in request.auth.token) && request.auth.token.email != null && request.auth.token.email_verified == true; }
+    // 문서 번호 속 학생 키 (data.js subId 와 같은 규칙: 영문·숫자·한글·._- 외에는 _)
+    function myKey() { return email().replace('[^a-zA-Z0-9가-힣._-]', '_'); }
+    function email() { return request.auth.token.email.lower(); }
+    function isRealTeacher() { return signedIn() && email() in [__TEACHERS__]; }
+    // 칠판 QR 로그인: 선생님 휴대폰이 허락한(boardGrants) 익명 칠판은 기한까지 선생님 권한
+    function isBoard() { return request.auth != null && request.auth.token.firebase.sign_in_provider == 'anonymous'
+      && exists(/databases/$(db)/documents/boardGrants/$(request.auth.uid))
+      && get(/databases/$(db)/documents/boardGrants/$(request.auth.uid)).data.exp > request.time.toMillis(); }
+    function isTeacher() { return isRealTeacher() || isBoard(); }
+    function isMember() { return signedIn() && exists(/databases/$(db)/documents/members/$(email())); }
+    function myClass() { return get(/databases/$(db)/documents/members/$(email())).data.classId; }
+    function inMyClass(cid) { return isMember() && cid == myClass(); }
+
+    match /config/{id}   { allow read: if isTeacher() || isMember(); allow write: if isTeacher(); }
+    match /members/{em}  { allow read: if isTeacher() || (signedIn() && em == email()); allow write: if isTeacher(); }   // 학생은 자기 줄만 (반 명단은 선생님만)
+    match /classes/{id}  { allow read: if isTeacher() || isMember(); allow write: if isTeacher(); }
+
+    // 교과서 내용·쪽 그림: 선생님 + 명단에 있는 학생만 (수업 목적 이용 — 접근 제한)
+    match /courses/{cid} {
+      allow read: if isTeacher() || isMember(); allow write: if isTeacher();
+      match /{rest=**} { allow read: if isTeacher() || isMember(); allow write: if isTeacher(); }
+    }
+
+    match /assignments/{id} {
+      allow read: if isTeacher() || inMyClass(resource.data.classId); allow write: if isTeacher();
+      // 복습 학습지의 학생별 틀린 문제: 본인만
+      match /per/{em} { allow read: if isTeacher() || (isMember() && em == email()); allow write: if isTeacher(); }
+    }
+
+    // 제출: 학생은 자기 것만. 선생님 피드백 칸은 학생이 바꿀 수 없다.
+    match /submissions/{id} {
+      allow read: if isTeacher() || (isMember() && resource.data.key == email());
+      allow create: if isTeacher() || (isMember() && request.resource.data.key == email() && request.resource.data.classId == myClass()
+                      && id == request.resource.data.aid + '__' + myKey()
+                      && !request.resource.data.keys().hasAny(['feedback', 'overall', 'checkedAt'])
+                      && (!('checked' in request.resource.data) || request.resource.data.checked == false));
+      allow update: if isTeacher() || (isMember() && resource.data.key == email() && request.resource.data.key == email()
+                      && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['feedback', 'overall', 'checkedAt', 'classId', 'aid', 'key'])
+                      && (!('checked' in request.resource.data) || request.resource.data.checked == false || request.resource.data.checked == resource.data.get('checked', false)));   // 학생은 '다시 확인 필요'(false)로만 돌릴 수 있다
+      allow delete: if isTeacher();
+    }
+
+    // 수업 중 실시간
+    match /live/{cid}        { allow read: if isTeacher() || inMyClass(cid); allow write: if isTeacher(); }
+    match /liveAnswers/{id} {
+      allow read: if isTeacher() || (isMember() && resource.data.key == email());
+      allow create: if isTeacher() || (inMyClass(request.resource.data.classId) && request.resource.data.key == email()
+                      && id == request.resource.data.classId + '__' + request.resource.data.qid + '__' + myKey());
+      allow update: if isTeacher() || (inMyClass(request.resource.data.classId) && request.resource.data.key == email() && resource.data.key == email());
+    }
+    match /signals/{id} {
+      allow read: if isTeacher() || (isMember() && resource.data.key == email());
+      allow create: if isTeacher() || (inMyClass(request.resource.data.classId) && request.resource.data.key == email()
+                      && id == request.resource.data.classId + '__' + request.resource.data.screenId + '__' + myKey());
+      allow update: if isTeacher() || (inMyClass(request.resource.data.classId) && request.resource.data.key == email() && resource.data.key == email());
+    }
+    match /questions/{id}    { allow read, update, delete: if isTeacher();
+                               allow create: if isTeacher() || (inMyClass(request.resource.data.classId)   // 익명: 이름·계정 칸을 저장할 수 없다
+                                 && request.resource.data.keys().hasOnly(['classId', 'text', 'screenId', 'at', 'done'])
+                                 && request.resource.data.text is string && request.resource.data.text.size() <= 300); }
+
+    // 수업 일지는 결석생 다시 보기에 쓰이므로 같은 반 학생이 읽을 수 있다
+    match /lessons/{id}      { allow read: if isTeacher() || inMyClass(resource.data.classId); allow write: if isTeacher(); }
+    match /lessonNotes/{id}  { allow read, write: if isTeacher(); }   // 수업 메모는 선생님만
+
+    // 판서: 선생님 판서는 같은 반 학생이 읽기만, 학생 개인 필기는 본인만
+    match /inks/{id} {
+      allow read: if isTeacher() || (isMember() && (resource.data.owner == email() || resource.data.classId == myClass()));
+      // 학생은 'stu_자기이메일' 문서만 만들고 고칠 수 있다 (선생님 판서·다른 학생 필기는 못 건드림)
+      allow create: if isTeacher() || (isMember() && id.split('__')[0] == ('stu_' + email()).replace('[/.@]', '_') && request.resource.data.owner == email() && request.resource.data.classId == 'stu_' + email());
+      allow update: if isTeacher() || (isMember() && resource.data.owner == email() && request.resource.data.owner == email() && request.resource.data.classId == 'stu_' + email());
+      allow delete: if isTeacher();
+    }
+
+    // 칠판 링크용 교과서 사본: 열쇠(문서 번호)를 아는 사람만 하나씩 읽기, 목록 보기는 막음
+    match /shared/{k} { allow get: if true; allow list: if false; allow write: if isTeacher();
+      match /{rest=**} { allow get: if true; allow list: if false; allow write: if isTeacher(); } }
+    match /boardGrants/{uid} { allow read: if (request.auth != null && request.auth.uid == uid) || isRealTeacher(); allow write: if isRealTeacher(); }
+    match /observations/{id} { allow read, write: if isTeacher(); }
+    match /groups/{id}       { allow read: if isTeacher() || inMyClass(id); allow write: if isTeacher(); }
+    match /evalPlan/{id}     { allow read, write: if isTeacher(); }
+  }
+}
