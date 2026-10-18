@@ -25,6 +25,7 @@
     const j = DT.qs().j; if (j) DT.store.set('st.join', j);   /* 학생 링크 코드 — 구글 로그인으로 화면이 바뀌어도 기억 */
     try { await DT.data.init(); } catch (e) { return err('연결하지 못했어요. 와이파이를 확인하고 새로 고침해 주세요.'); }
     S.me = DT.data.user();
+    if (S.me && S.me.role === 'teacher') return teacherHere();
     if (S.me && S.me.role === 'pending') return waitApproval();
     if (S.me && S.me.role === 'guest' && DT.store.get('st.join', '')) return joinForm();
     if (!S.me || S.me.role !== 'student') return login();
@@ -39,7 +40,7 @@
     const card = DT.el('div', { class: 'login__card' });
     if (DT.data.mode === 'firebase') {
       card.append(DT.el('h2', null, '학교 구글 계정으로 시작'),
-        DT.el('button', { class: 'gbtn', type: 'button', html: ICON_G + '구글 계정으로 로그인', onclick: async () => { try { const u = await DT.data.signIn(); if (u && u.role === 'student') { S.me = u; enter(); } else if (u && u.role === 'pending') { S.me = u; waitApproval(); } else if (u && DT.store.get('st.join', '')) { S.me = u; joinForm(); } else if (u) { DT.toast(u.email + ' 계정은 아직 명단에 없어요. 선생님이 보여 준 QR이나 클래스룸 링크로 들어와 주세요.', 'bad'); } } catch (e) { DT.toast('로그인하지 못했어요: ' + (e.message || e), 'bad'); } } }),
+        DT.el('button', { class: 'gbtn', type: 'button', html: ICON_G + '구글 계정으로 로그인', onclick: async () => { try { const u = await DT.data.signIn(); if (u && u.role === 'student') { S.me = u; enter(); } else if (u && u.role === 'teacher') { S.me = u; teacherHere(); } else if (u && u.role === 'pending') { S.me = u; waitApproval(); } else if (u && DT.store.get('st.join', '')) { S.me = u; joinForm(); } else if (u) { DT.toast(u.email + ' 계정은 아직 명단에 없어요. 선생님이 보여 준 QR이나 클래스룸 링크로 들어와 주세요.', 'bad'); } } catch (e) { DT.toast('로그인하지 못했어요: ' + (e.message || e), 'bad'); } } }),
         DT.el('p', { class: 'login__note' }, '한 번 로그인하면 이 아이패드에서는 다음부터 바로 열려요. 이름과 답은 우리 반 선생님만 볼 수 있어요.'));
       if (S.me && S.me.role === 'guest') card.append(DT.el('div', { class: 'fb fb--bad' }, S.me.email + ' 계정은 아직 명단에 없어요. 선생님이 보여 준 QR이나 클래스룸 링크로 다시 들어오면 명단에 저절로 들어가요.'));
     } else {
@@ -86,6 +87,15 @@
       DT.el('div', { class: 'join-row' }, g, c, n), nm, prev, go,
       DT.el('p', { class: 'login__note' }, S.me.email + ' 계정으로 들어가요. ', DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', onclick: async () => { await DT.data.signOut(); location.reload(); } }, '다른 계정으로')));
     m.append(DT.el('div', { class: 'login' }, DT.el('div', { class: 'login__brand' }, DT.el('span', { class: 'pill' }, '학생용'), DT.el('h1', null, '반가워요!'), DT.el('p', null, '학년·반·번호와 이름을 적으면 우리 반 명단에 들어가요. 다음부터는 바로 열려요.')), card));
+  }
+  /* 선생님 계정으로 학생 화면을 열었을 때: 명단에 넣지 않고 알려 준다 */
+  function teacherHere() {
+    const m = shell('수업잇기');
+    m.append(DT.el('div', { class: 'empty' }, DT.el('b', null, '선생님 계정으로 로그인했어요'),
+      DT.el('span', null, S.me.email + ' 은 선생님 계정이라 학생 명단에 들어가지 않아요. 학생 화면을 시험하려면 다른 구글 계정(개인 계정 등)으로 로그인해 주세요.'),
+      DT.el('div', { style: { display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' } },
+        DT.el('a', { class: 'btn btn--ink', href: 'teacher.html' }, '선생님 기록 화면 열기'),
+        DT.el('button', { class: 'btn', type: 'button', onclick: async () => { await DT.data.signOut(); location.reload(); } }, '다른 계정으로 로그인'))));
   }
   /* 학교 계정이 아닌 계정: 선생님이 「받기」를 누르면 저절로 열린다 */
   function waitApproval() {

@@ -138,7 +138,13 @@
 
   /* ── 반 ── */
   async function pickClass(first) {
-    if (!S.cls.length) { await useClass(null); return; }
+    if (!first) S.cls = await DT.data.listClasses().catch(() => S.cls);   /* 학생이 방금 들어와 생긴 반도 보이게 */
+    if (!S.cls.length) {
+      await useClass(null);
+      if (!first) DT.modal({ title: '아직 반이 없어요', body: '<p>학생이 <b>학생 접속 QR</b>로 들어와 학년·반·번호를 적으면 반이 저절로 생겨요.</p><p class="muted">그 뒤에 다시 「반 선택」을 누르면 반이 보여요.</p>',
+        actions: [{ label: '닫기' }, { label: '학생 접속 QR 띄우기', kind: 'ink', icon: 'qr', onClick: (c) => { c(); studentQR(); } }] });
+      return;
+    }
     return new Promise((res) => {
       const box = DT.el('div', { class: 'classpick' });
       let m;
