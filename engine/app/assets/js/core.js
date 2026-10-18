@@ -289,7 +289,7 @@
       });
       paint(); return w;
     },
-    open() { DT.modal({ title: '화면 테마', body: DT.el('div', { style: { display: 'grid', gap: '10px' } }, DT.el('p', { class: 'muted', style: { margin: 0 } }, '누르면 바로 바뀌어요. 이 기기에만 저장돼요.'), DT.theme.picker()), actions: [{ label: '닫기', kind: 'ink' }] }); }
+    open() { DT.modal({ title: '화면 테마', wide: true, body: DT.el('div', { style: { display: 'grid', gap: '10px' } }, DT.el('p', { class: 'muted', style: { margin: 0 } }, '누르면 바로 바뀌어요. 이 기기에만 저장돼요.'), DT.theme.picker()), actions: [{ label: '닫기', kind: 'ink' }] }); }
   };
   DT.theme.apply();
 
