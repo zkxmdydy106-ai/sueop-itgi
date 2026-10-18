@@ -195,7 +195,12 @@
       async signIn() {
         const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
         try { const r = await auth.signInWithPopup(p); return resolveUser(r.user); }
-        catch (e) { if (/popup/.test(e.code || '')) { await auth.signInWithRedirect(p); return null; } throw e; }
+        catch (e) {
+          /* 다른 페이지로 넘어갔다 오는 방식(redirect)은 아이폰 사파리에서 'missing initial state'로 깨진다 → 쓰지 않는다 */
+          if (/popup-closed-by-user|cancelled-popup-request/.test(e.code || '')) return null;   /* 학생이 창을 닫음: 조용히 */
+          if (/popup-blocked/.test(e.code || '')) throw new Error('로그인 창이 막혔어요. 버튼을 한 번 더 눌러 주세요. (계속 안 되면 브라우저 설정에서 팝업 차단을 꺼 주세요)');
+          throw e;
+        }
       },
       async signOut() { await auth.signOut(); me = null; },
       /* 칠판 QR 로그인 — 칠판: pairStart → QR(teacher.html?pair=…) → onGrant 기다림. 휴대폰: grantBoard */
