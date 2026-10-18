@@ -426,7 +426,8 @@
     const m = DT.el('div', { class: 'toolmenu', role: 'menu' });
     const nq = S.questions.filter((q) => !q.done).length;
     const item = (ic, t, d, fn, wide) => { const b = DT.el('button', { class: 'toolmenu__item' + (wide ? ' toolmenu__item--wide' : ''), type: 'button', role: 'menuitem', html: DT.icon(ic) + '<b>' + t + '</b><span>' + d + '</span>' }); b.onclick = () => { close(); fn(); }; m.append(b); };
-    const needClass = (fn) => () => (S.classId ? fn() : DT.toast('먼저 위의 반 선택에서 반을 골라 주세요.'));
+    /* 반이 없으면 조용히 끝내지 않고 반 고르기 창을 띄운다 (링크로 연 칠판은 휴대폰 QR 안내) */
+    const needClass = (fn) => () => (S.classId ? fn() : DT.data.mode === 'local' ? linkInfo() : pickClass(false));
     item('send', '학습지 보내기', '이 소단원 학습지를 학생 아이패드로', needClass(openSend), true);
     item('ask', '학생에게 묻기', 'O/X · 고르기 · 짧은 답을 바로', needClass(() => openAsk(null)));
     item('signal', '이해도 · 질문함' + (nq ? '<i class="toolmenu__badge num">' + nq + '</i>' : ''), '학생들의 신호와 익명 질문', needClass(openSignals));
