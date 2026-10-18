@@ -72,7 +72,7 @@
 
   /* 칠판 링크 모드에서 「반 선택」: 학생 아이패드와 이으려면 로그인 */
   function linkInfo() {
-    DT.modal({ title: '학생 아이패드와 이어서 쓰기', body: '<p>지금은 로그인 없이 칠판만 쓰고 있어요. 판서와 수업 도구는 이 컴퓨터에만 남아요.</p><p class="muted">즉석 질문 응답, 학습지 보내기, 학생 신호를 쓰려면 선생님 계정으로 열어 주세요. 휴대폰으로 QR만 찍으면 돼요.</p>',
+    DT.modal({ title: '반 고르기', body: '<p>반을 고르려면 <b>휴대폰으로 QR을 한 번</b> 찍어 선생님 계정으로 열어 주세요. 그러면 반 목록이 나오고, 즉석 질문·학습지 보내기·학생 신호도 쓸 수 있어요.</p><p class="muted">지금은 로그인 없이 칠판만 쓰는 중이라 판서는 이 컴퓨터에만 남아요.</p>',
       actions: [{ label: '닫기' }, { label: '휴대폰 QR로 열기', kind: 'ink', icon: 'camera', onClick: (c) => { c(); qrLogin(); } }] });
   }
 
@@ -159,7 +159,7 @@
     S.classId = id; const c = S.cls.find((x) => x.id === id);
     S.className = c ? c.name : '';
     DT.store.set('board.class.' + C.courseId, id);
-    $('#btnClass').innerHTML = DT.data.mode === 'local' ? DT.icon('qr') + '<span>휴대폰으로 열기</span>' : DT.icon('users') + '<span>' + DT.esc(S.className || '반 선택') + '</span>';
+    $('#btnClass').innerHTML = DT.icon('users') + '<span>' + DT.esc(S.className || '반 선택') + '</span>';   /* 링크로 연 칠판도 같은 자리 · 누르면 휴대폰 QR 안내 */
     S.roster = id ? await DT.data.getRoster(id) : [];
     if (id) {
       unsub.push(DT.data.onSignals(id, (rows) => { S.signals = rows; paintLive(); }));
