@@ -12,14 +12,21 @@
   /* 고른 범위에서 넣을 수 있는 모든 거리 */
   W.pool = function (tb, scope) {
     const out = [];
-    ['concept', 'practice', 'group', 'self', 'career'].forEach((k) => W.build(tb, scope, k).items.forEach((it) => { if (!out.find((x) => x.id === it.id)) out.push(it); }));
+    const add = (it) => { if (!out.find((x) => x.id === it.id)) out.push(it); };
+    ['concept', 'practice', 'group', 'self', 'career'].forEach((k) => W.build(tb, scope, k).items.forEach(add));
+    W.variants(tb, scope).forEach(add);          /* 변형 문제 전부 (개념별) */
+    W.sentences(tb, scope).forEach(add);         /* 문장 — 원하는 곳에 빈칸 */
+    W._terms = W.allTerms(tb);
     return out;
   };
+  /* 보내기·인쇄 전에: 빈칸을 하나도 안 고른 문장이 있으면 알려 준다 */
+  W.check = (w) => { const b = w.items.filter((it) => it.type === 'blank' && !(it.answers || []).length); return b.length ? '빈칸을 고르지 않은 문장이 ' + b.length + '개 있어요. 「빈칸 고르기」로 단어를 눌러 주세요.' : ''; };
 
   /* 빈칸 문항: x 안의 [[ ]] 가 빈칸. 답·보기 단어를 다시 맞춘다 */
   function reblank(it) {
     const ans = DT.terms(it.x);
-    const extra = (it.bank || []).filter((w) => !(it.answers || []).includes(w) && !ans.includes(w)).slice(0, 3);
+    let extra = (it.bank || []).filter((w) => !(it.answers || []).includes(w) && !ans.includes(w)).slice(0, 3);
+    if (extra.length < 3 && W._terms) extra = extra.concat(DT.shuffle(W._terms.filter((w) => !ans.includes(w) && !extra.includes(w)), ans.length * 7 + 3).slice(0, 3 - extra.length));   /* 헷갈리는 보기 단어 */
     it.answers = ans; it.bank = DT.shuffle(ans.concat(extra), (it.id || '').length * 13 + ans.length);
     return it;
   }
@@ -134,22 +141,35 @@
       e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); const it = pool.find((x) => x.id === id); if (!it || w.items.find((x) => x.id === id)) return;
       const rows = DT.$$('.wse-item', list); let at = rows.length;
       for (let k = 0; k < rows.length; k++) { const r = rows[k].getBoundingClientRect(); if (e.clientY < r.top + r.height / 2) { at = k; break; } }
-      w.items.splice(at, 0, JSON.parse(JSON.stringify(it))); paintList(); paintSide();
+      w.items.splice(at, 0, JSON.parse(JSON.stringify(it))); if (it.sentence) open = it.id; paintList(); paintSide();
     });
 
-    let tab = 'book';
+    let tab = 'book', filt = 'all', concept = '';
     function paintSide() {
       side.innerHTML = '';
       const tabs = DT.el('div', { class: 'chips' }, [['book', '교과서에서 넣기'], ['mine', '내 문제 쓰기']].map(([id, t]) => DT.el('button', { class: 'chip', type: 'button', 'aria-pressed': tab === id ? 'true' : 'false', onclick: () => { tab = id; paintSide(); } }, t)));
       side.append(tabs);
       if (tab === 'mine') { side.append(customForm((it) => { w.items.push(it); paintList(); DT.toast('넣었어요. 왼쪽 맨 아래에 있어요.'); })); return; }
-      const rest = pool.filter((p) => !w.items.find((x) => x.id === p.id));
-      if (!rest.length) { side.append(DT.el('p', { class: 'muted' }, '이 범위의 문항은 모두 넣었어요.')); return; }
-      side.append(DT.el('p', { class: 'muted', style: { margin: 0 } }, '끌어서 왼쪽에 놓거나 「넣기」를 눌러요.'));
+      /* 고르기 쉽게: 종류 → (변형 문제면) 개념 */
+      const groupOf = (p) => (p.variant ? 'var' : p.sentence ? 'sent' : p.type === 'blank' ? 'blank' : ['short', 'choice', 'ox', 'open'].includes(p.type) ? 'book' : 'act');
+      const fchips = DT.el('div', { class: 'chips wse-filter' }, [['all', '전체'], ['var', '변형 문제'], ['book', '교과서 문제'], ['blank', '개념 빈칸'], ['sent', '문장에 빈칸 직접'], ['act', '활동·평가']]
+        .filter(([id]) => id === 'all' || pool.some((p) => groupOf(p) === id))
+        .map(([id, t]) => DT.el('button', { class: 'chip', type: 'button', 'aria-pressed': filt === id ? 'true' : 'false', onclick: () => { filt = id; concept = ''; paintSide(); } }, t)));
+      side.append(fchips);
+      if (filt === 'var') {
+        const cs = [...new Set(pool.filter((p) => p.variant).map((p) => p.concept))];
+        const sel = DT.el('select', { class: 'select', 'aria-label': '개념' }, DT.el('option', { value: '' }, '모든 개념 (' + cs.length + '개)'), cs.map((c) => DT.el('option', { value: c, selected: c === concept ? true : null }, c)));
+        sel.onchange = () => { concept = sel.value; paintSide(); };
+        side.append(sel);
+      }
+      const rest = pool.filter((p) => !w.items.find((x) => x.id === p.id) && (filt === 'all' || groupOf(p) === filt) && (!concept || p.concept === concept));
+      if (!rest.length) { side.append(DT.el('p', { class: 'muted' }, '여기 있는 문항은 모두 넣었어요.')); return; }
+      if (filt === 'var' && concept) side.append(DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('plus') + '이 개념 ' + rest.length + '문제 모두 넣기', onclick: () => { rest.forEach((x) => w.items.push(JSON.parse(JSON.stringify(x)))); paintList(); paintSide(); } }));
+      side.append(DT.el('p', { class: 'muted', style: { margin: 0 } }, filt === 'sent' ? '문장을 넣은 뒤 단어를 눌러 원하는 곳에 빈칸을 만들어요.' : '끌어서 왼쪽에 놓거나 「넣기」를 눌러요.'));
       const box = DT.el('div', { class: 'wse-pool' });
       rest.forEach((it) => {
-        const row = DT.el('div', { class: 'wse-pitem', draggable: 'true' }, DT.el('span', { class: 'pill' }, typeName[it.type] || '문항'), DT.el('div', { class: 'wse-pitem__t' }, DT.el('b', { html: DT.md(it.label || '') }), DT.el('small', { html: DT.md(summary(it)) })),
-          DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('plus') + '넣기', onclick: () => { w.items.push(JSON.parse(JSON.stringify(it))); paintList(); paintSide(); } }));
+        const row = DT.el('div', { class: 'wse-pitem', draggable: 'true' }, DT.el('span', { class: 'pill' }, it.variant ? '변형' : it.sentence ? '문장' : typeName[it.type] || '문항'), DT.el('div', { class: 'wse-pitem__t' }, DT.el('b', { html: DT.md(it.label || '') }), DT.el('small', { html: DT.md(summary(it)) })),
+          DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('plus') + '넣기', onclick: () => { w.items.push(JSON.parse(JSON.stringify(it))); if (it.sentence) open = it.id; paintList(); paintSide(); } }));
         row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', it.id); e.dataTransfer.effectAllowed = 'copy'; });
         box.append(row);
       });
@@ -168,11 +188,18 @@
     const pg = DT.el('article', { class: 'wsp' });
     pg.append(DT.el('header', { class: 'wsp__head' }, DT.el('div', null, DT.el('small', null, [C.school, opt.cls].filter(Boolean).join(' · ')), DT.el('h1', null, w.title + (opt.answers ? ' (정답)' : ''))),
       DT.el('div', { class: 'wsp__who' }, '학번 ________　이름 ____________')));
-    const ol = DT.el('ol', { class: 'wsp__list' });
+    let ol = DT.el('ol', { class: 'wsp__list' }); pg.append(ol);
     const key = (t) => (opt.answers ? DT.el('div', { class: 'wsp__key', html: '정답: ' + t }) : null);
+    let sec = null, no = 0;
     w.items.forEach((it) => {
+      no++;
+      if (opt.sections && (it.concept || '') !== sec) {   /* 문제 모음: 개념마다 제목 */
+        sec = it.concept || ''; if (ol.children.length) { ol = DT.el('ol', { class: 'wsp__list', start: String(no) }); }
+        pg.append(DT.el('h2', { class: 'wsp__sec' }, sec || '문제'), ol);
+      }
       const li = DT.el('li', { class: 'wsp__item' });
-      li.append(DT.el('div', { class: 'wsp__lab', html: DT.md(it.label || '') + (it.src && it.src.page ? ' <small>(교과서 ' + it.src.page + '쪽)</small>' : '') }));
+      const lab = opt.sections && it.variant ? '변형' : it.label || '';
+      li.append(DT.el('div', { class: 'wsp__lab', html: DT.md(lab) + (it.src && it.src.page ? ' <small>(교과서 ' + it.src.page + '쪽)</small>' : '') }));
       if (it.type === 'blank') {
         let n = 0; const ans = it.answers || [];
         li.append(DT.el('div', { class: 'wsp__q', html: DT.md(String(it.x || '').replace(/\[\[([^\]]+?)\]\]/g, () => { const k = n++; return opt.answers ? '<u>' + DT.esc(ans[k] || '') + '</u>' : '(' + '①②③④⑤⑥⑦⑧⑨⑩'[k] + '　　　　　)'; })) }));
@@ -196,20 +223,24 @@
       if (it.figs && it.figs.length) { const f = DT.el('div', { class: 'wsp__figs' }); it.figs.forEach((src) => { const im = DT.el('img', { alt: '' }); DT.data.asset(src).then((u) => { im.src = u; }); f.append(im); }); li.append(f); }
       ol.append(li);
     });
-    pg.append(ol, DT.el('footer', { class: 'wsp__foot' }, '출처: 교과서 — 수업 목적으로만 사용'));
+    pg.append(DT.el('footer', { class: 'wsp__foot' }, '출처: 교과서 — 수업 목적으로만 사용' + (w.items.some((it) => it.variant) ? ' · 「변형」은 교과서 문제의 숫자·조건을 바꾼 문제' : '')));
     return pg;
   };
 
-  /* 인쇄: 학생용 / 정답 포함 고르기 → 인쇄 창 (PDF 저장도 여기서) */
-  W.print = function (w, clsName) {
+  /* 인쇄: 학생용 / 정답 포함 고르기 → 인쇄 창 (PDF 저장도 여기서). 칠판·선생님 화면 어디서나 */
+  W.print = function (w, clsName, popt) {
+    popt = popt || {};
     const go = (answers) => {
-      const pa = document.getElementById('printArea'); pa.innerHTML = '';
-      pa.append(W.paper(w, { answers, cls: clsName }));
+      let pa = document.getElementById('printArea');
+      if (!pa) { pa = DT.el('div', { class: 'print-area', id: 'printArea' }); document.body.append(pa); }
+      pa.innerHTML = ''; document.body.classList.add('is-printing');
+      addEventListener('afterprint', () => document.body.classList.remove('is-printing'), { once: true });
+      pa.append(W.paper(w, { answers, cls: clsName, sections: popt.sections }));
       const imgs = DT.$$('img', pa); let left = imgs.length;
       const fire = () => setTimeout(() => window.print(), 150);
       if (!left) return fire();
       const t = setTimeout(fire, 2500); imgs.forEach((im) => { im.onload = im.onerror = () => { if (--left === 0) { clearTimeout(t); fire(); } }; });
     };
-    DT.modal({ title: '학습지 인쇄', body: '<p>종이로 나눠 줄 학습지예요. 인쇄 창에서 「PDF로 저장」을 고르면 파일로도 저장돼요.</p>', actions: [{ label: '닫기' }, { label: '정답 포함 (선생님용)', icon: 'print', onClick: (c) => { c(); go(true); } }, { label: '학생용 인쇄', kind: 'ink', icon: 'print', onClick: (c) => { c(); go(false); } }] });
+    DT.modal({ title: popt.sections ? '문제 모음 인쇄 · PDF' : '학습지 인쇄', body: '<p>' + (popt.sections ? '이 범위의 교과서 문제와 변형 문제 ' + w.items.length + '개를 개념별로 모았어요. ' : '종이로 나눠 줄 학습지예요. ') + '인쇄 창에서 「PDF로 저장」을 고르면 PDF 파일이 돼요.</p>', actions: [{ label: '닫기' }, { label: '정답 포함 (선생님용)', icon: 'print', onClick: (c) => { c(); go(true); } }, { label: '학생용 인쇄', kind: 'ink', icon: 'print', onClick: (c) => { c(); go(false); } }] });
   };
 })();

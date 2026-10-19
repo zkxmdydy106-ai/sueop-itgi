@@ -19,7 +19,7 @@ python tools/deploy/deploy.py "작업물/<이름>"                              
 - **전자칠판 짧은 주소**: Hosting 사이트를 하나 더 만든다(`POST firebasehosting.googleapis.com/v1beta1/projects/<p>/sites?siteId=<짧은이름>`, 예: sueop → 이미 쓰였으면 다른 이름) → `deploy.json`에 `"shortSite": "<짧은이름>"` → deploy.py가 6자리 칠판 코드(`.boardcode`)와 이동 규칙을 만든다. 선생님은 전자칠판 주소창에 `<짧은이름>.web.app` → 코드. 코드는 선생님 화면 › 설정 「전자칠판에서 열기」에. 코드 바꾸기: `.boardcode` 지우고 deploy.
 - **아이폰 사파리 로그인(필수)**: 구글 클라우드 콘솔 › Google 인증 플랫폼 › 클라이언트 › 'Web client (auto created by Google Service)' › 승인된 리디렉션 URI에 `https://<프로젝트>.web.app/__/auth/handler` 추가·저장(Code가 브라우저로) → `config.js`의 `authHere: true` → deploy. 안 하면 아이폰에서 'missing initial state' 오류.
 - 학교 계정이 프로젝트 만들기를 막으면 → 선생님 개인 구글 계정으로 로그인해 만들고, `--teacher`에는 학교 계정을 넣는다(로그인은 학교 계정, 서버 주인은 개인 계정).
-- 익명 로그인은 **칠판 QR 로그인**에 쓴다: 칠판에 QR → 선생님 휴대폰으로 찍고 「이 칠판 열기」 → 그 칠판은 120일 동안 선생님 권한(`boardGrants`). 칠판 세션은 teacher.html(학생 기록)을 열 수 없다.
+- 익명 로그인은 **칠판 QR 로그인**에 쓴다: 칠판에 QR → 선생님 휴대폰으로 찍고 「이 칠판 열기」 → 그 칠판은 120일 동안 선생님 권한(`boardGrants`). 칠판 세션도 teacher.html(학생 기록)을 열 수 있다(선생님 결정 — 칠판에는 기록으로 가는 버튼이 없다).
 - 교과서를 고치거나 쪽을 더 만들면 `deploy.py`만 다시. 바뀐 것만 올라가고 링크·기록은 그대로.
 - 따로 쓰는 도구: `tools/deploy/firebase_api.py <projectId> status|anonymous|firestore|webconfig <경로>`, `tools/deploy/upload_course.py "작업물/<이름>" [--shared]`.
 

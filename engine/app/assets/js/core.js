@@ -40,6 +40,26 @@
   });
   /* 학생 링크: student.html?j=코드 — 이 코드로 들어온 학생은 로그인하면 명단에 저절로 들어간다 */
   DT.studentLink = (code) => { const u = new URL('student.html', location.href); u.search = code ? '?j=' + encodeURIComponent(code) : ''; u.hash = ''; return u.href; };
+  /* ── 답 입력 자판: 숫자 + 그 단원에 필요한 기호 + 지우기 ──
+     기호는 content.js 의 단원(units[].keys) → 교과서 전체(meta.keys) → 과목 기본 순서로 찾는다 */
+  DT.keyDefaults = { '수학': ['√', 'π', '/', '−', '(', ')', ',', '²', '°', '×'], '과학': ['×', '/', '−', '²', '³', '°', '(', ')', '.', 'μ'] };
+  DT.keysFor = function (tb, screenId) {
+    const scr = tb && screenId && tb._byId ? tb._byId[screenId] : null;
+    const unit = tb && (tb.units || []).find((u) => scr ? (u.children || []).some((c) => (c.screens || []).some((x) => x.id === screenId)) : false);
+    return (unit && unit.keys) || (tb && tb.meta && tb.meta.keys) || DT.keyDefaults[tb && tb.meta && tb.meta.subject] || DT.keyDefaults['수학'];
+  };
+  DT.keypad = function (inp, keys, onInput) {
+    const ins = (k) => { const p = inp.selectionStart == null ? inp.value.length : inp.selectionStart, q = inp.selectionEnd == null ? p : inp.selectionEnd; inp.value = inp.value.slice(0, p) + k + inp.value.slice(q); inp.setSelectionRange(p + k.length, p + k.length); onInput && onInput(inp.value); };
+    const del = () => { const p = inp.selectionStart == null ? inp.value.length : inp.selectionStart; if (p === 0) return; inp.value = inp.value.slice(0, p - 1) + inp.value.slice(p); inp.setSelectionRange(p - 1, p - 1); onInput && onInput(inp.value); };
+    const pad = DT.el('div', { class: 'keypad', 'aria-label': '답 입력 자판' });
+    const key = (t, fn, cls) => { const b = DT.el('button', { type: 'button', class: cls || '' }, t); b.addEventListener('pointerdown', (e) => e.preventDefault()); b.onclick = fn; return b; };
+    const nums = DT.el('div', { class: 'keypad__nums' }, ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.', '−'].map((k) => key(k, () => ins(k === '−' ? '-' : k))));
+    const syms = DT.el('div', { class: 'keypad__syms' }, keys.map((k) => key(k, () => ins(k === '−' ? '-' : k), 'is-sym')));
+    const abc = key('글자 키보드', () => { inp.setAttribute('inputmode', 'text'); inp.blur(); setTimeout(() => inp.focus(), 50); }, 'is-wide');
+    const back = key('⌫ 지우기', del, 'is-wide is-del');
+    pad.append(nums, syms, DT.el('div', { class: 'keypad__row' }, abc, back));
+    return pad;
+  };
   DT.qs = () => {
     const out = {};
     const add = (str) => str.replace(/^[?#]/, '').split('&').forEach((kv) => { if (!kv) return; const [k, v = ''] = kv.split('='); out[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' ')); });
@@ -121,7 +141,7 @@
   DT.norm = function (s) {
     return String(s == null ? '' : s).normalize('NFKC').toLowerCase()
       .replace(/[−–—]/g, '-').replace(/[×✕]/g, '*').replace(/÷/g, '/').replace(/[，]/g, ',')
-      .replace(/\\(left|right)/g, '').replace(/[\s{}]/g, '').replace(/^\((.*)\)$/, '$1')
+      .replace(/\\(left|right)/g, '').replace(/\\(overrightarrow|vec|overline|mathrm)/g, '').replace(/[→⃗]/g, '').replace(/[\s{}]/g, '').replace(/^\((.*)\)$/, '$1')
       .replace(/(입니다|이다|다|요|임)\.?$/, '').replace(/\.$/, '');
   };
   DT.numVal = function (s) {

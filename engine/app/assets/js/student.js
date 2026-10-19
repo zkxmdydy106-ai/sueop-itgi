@@ -262,8 +262,8 @@
       box.append(q(it.q), figsOf(it));
       const inp = DT.el('input', { class: 'ans-input', type: 'text', inputmode: it.mode === 'num' ? 'decimal' : 'text', autocomplete: 'off', placeholder: '답을 적어요', value: ans[it.id] || '', 'aria-label': '답' });
       inp.addEventListener('input', () => { ans[it.id] = inp.value; save(); });
-      const keys = DT.el('div', { class: 'mathkeys', 'aria-label': '수식 자판' });
-      ['√', 'π', '²', '°', '−', '/', '(', ')', '×'].forEach((k) => keys.append(DT.el('button', { type: 'button', onclick: () => { const p = inp.selectionStart || inp.value.length; inp.value = inp.value.slice(0, p) + k + inp.value.slice(p); inp.focus(); inp.setSelectionRange(p + k.length, p + k.length); ans[it.id] = inp.value; save(); } }, k)));
+      inp.setAttribute('inputmode', 'none');   /* 숫자·기호는 아래 자판으로 (아이패드 자판이 화면을 가리지 않게) — 「글자 키보드」로 바꿀 수 있음 */
+      const keys = DT.keypad(inp, DT.keysFor(S.tb, it.src && it.src.screen), (v) => { ans[it.id] = v; save(); });
       box.append(DT.el('div', { class: 'ans-row' }, inp), keys);
     } else if (it.type === 'choice') {
       box.append(q(it.q), figsOf(it)); const cs = DT.el('div', { class: 'choices' });
@@ -525,8 +525,8 @@
     } else if (q.type === 'choice') {
       const numOnly = (q.choices || []).every((c) => !String(c || '').trim()); const cs = DT.el('div', { class: 'choices' + (numOnly ? ' choices--num' : '') }); (q.choices || []).forEach((c, k) => cs.append(DT.el('button', { class: 'choice', type: 'button', html: '<b>' + '①②③④⑤'[k] + '</b><span>' + DT.md(c) + '</span>', onclick: () => send(String(k + 1)) }))); sheet.append(cs);
     } else {
-      const inp = DT.el('input', { class: 'ans-input', placeholder: '답을 적어요', 'aria-label': '답' });
-      sheet.append(DT.el('div', { class: 'ans-row' }, inp, DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('send') + '보내기', onclick: () => inp.value.trim() && send(inp.value.trim()) })));
+      const inp = DT.el('input', { class: 'ans-input', placeholder: '답을 적어요', 'aria-label': '답', inputmode: 'none' });
+      sheet.append(DT.el('div', { class: 'ans-row' }, inp, DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('send') + '보내기', onclick: () => inp.value.trim() && send(inp.value.trim()) })), DT.keypad(inp, DT.keysFor(S.tb, q.screenId)));
     }
     document.body.append(sheet);
   }

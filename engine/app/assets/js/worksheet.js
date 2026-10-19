@@ -12,6 +12,7 @@
     { id: 'exit', name: '오늘 배운 것 확인', desc: '빈칸 3 · 문제 3 · 자기평가 — 수업 끝 5분용', icon: 'check', rec: true },
     { id: 'concept', name: '개념 빈칸 채우기', desc: '교과서 핵심어를 빈칸으로', icon: 'note' },
     { id: 'practice', name: '연습 문제', desc: '교과서 문제 · 바로 채점', icon: 'pencil' },
+    { id: 'variant', name: '변형 문제', desc: '숫자를 바꾼 새 문제 · 개념마다 2개 · 바로 채점', icon: 'refresh' },
     { id: 'group', name: '모둠 활동지', desc: '역할 나누기 · 함께 답하기 · 동료평가', icon: 'users' },
     { id: 'self', name: '자기평가', desc: '성취기준별로 스스로 점검', icon: 'target' },
     { id: 'career', name: '진로 탐구', desc: '교과서 속 탐구 거리 추천 + 내 탐구 계획', icon: 'compass' }
@@ -61,6 +62,35 @@
     subs.forEach((u) => (u.practice || []).forEach((p, i) => out.push({ id: 'x' + u.id + '.' + i, type: p.type || 'short', mode: p.mode || 'num', q: p.q, label: p.label || '더 풀어 보기', key: [].concat(p.key), choices: p.choices, sol: p.sol, src: { screen: p.screen, page: p.page, title: DT.plain(u.title) } })));
     return out;
   }
+  /* 변형 문제: 교과서 개념별로 숫자·조건을 바꾼 새 문제 (교과서 글 아님 — 「변형」 표시) */
+  function variantItems(subs, per) {
+    const out = [];
+    subs.forEach((u) => {
+      const seen = {};
+      (u.variants || []).forEach((p, i) => {
+        seen[p.concept] = (seen[p.concept] || 0) + 1; if (per && seen[p.concept] > per) return;
+        out.push({ id: 'v' + u.id + '.' + i, type: p.type || 'short', mode: p.mode || 'num', q: p.q, label: '변형 · ' + p.concept, concept: p.concept, variant: true, key: [].concat(p.key), choices: p.choices, sol: p.sol, src: { title: DT.plain(u.title) } });
+      });
+    });
+    return out;
+  }
+  W.variants = (tb, scope, per) => variantItems(subsOf(tb, scope), per);
+  /* 문제 모음: 범위 안의 교과서 문제 + 변형 문제 전부, 개념별로 (인쇄·PDF용) */
+  W.compile = (tb, scope) => {
+    const subs = subsOf(tb, scope);
+    const book = probItems(tb, screensIn(tb, scope), subs).map((it) => Object.assign({}, it, { concept: '교과서 문제 · ' + (it.src && it.src.title || '') }));
+    return { title: subs.map((u) => DT.plain(u.title)).join(', ') + ' · 문제 모음', kind: 'custom', items: book.concat(variantItems(subs)), scope, subunitIds: subs.map((u) => u.id) };
+  };
+  /* 문장 그대로(빈칸 없음) — 선생님이 원하는 곳을 눌러 빈칸을 만든다 */
+  W.sentences = (tb, scope) => {
+    const out = [];
+    screensIn(tb, scope).forEach((s) => blocksIn(s).forEach((b) => {
+      if (!/^(def|p|note|list|thm)$/.test(b.t) || !b.x || typeof b.x !== 'string' || b.x.length < 8) return;
+      out.push({ id: 'q' + b.id, type: 'blank', x: b.x.replace(/\[\[([^\]]+?)\]\]/g, '$1'), answers: [], bank: [], label: '문장 · ' + DT.plain(s.chip || s.title), sentence: true, src: { screen: s.id, page: (s.pages || [])[0], title: DT.plain(s.title) } });
+    }));
+    return out;
+  };
+  W.allTerms = (tb) => allTerms(tb);
   function selfItems(tb, subs) {
     const crit = [];
     subs.forEach((u) => (u.standards || []).forEach((st, i) => crit.push({ id: u.id + '.s' + i, text: st.can || st.text, code: st.code })));
@@ -130,6 +160,7 @@
     let items = [];
     if (kind === 'concept') items = blankItems(tb, screens);
     else if (kind === 'practice') items = probItems(tb, screens, subs);
+    else if (kind === 'variant') items = variantItems(subs, 2);
     else if (kind === 'group') items = groupItems(tb, screens);
     else if (kind === 'self') items = selfItems(tb, subs);
     else if (kind === 'career') items = careerItems(tb, subs);

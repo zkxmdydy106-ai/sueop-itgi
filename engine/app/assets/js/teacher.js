@@ -18,7 +18,7 @@
     try { await DT.data.init(); } catch (e) { return fatal('기록 저장소에 연결하지 못했어요. (' + e.message + ')'); }
     T.me = DT.data.user();
     if (DT.data.mode === 'firebase' && (!T.me || T.me.role !== 'teacher')) return login();
-    if (T.me && T.me.viaBoard) return fatal('칠판 QR로 연 화면에서는 학생 기록을 볼 수 없어요. 기록은 선생님 휴대폰이나 PC에서 학교 계정으로 열어 주세요.');
+    /* 칠판 QR로 연 기기에서도 기록 화면을 연다 (선생님 결정 2026-10-19 · 칠판에는 기록으로 가는 버튼이 없음) */
     if (DT.qs().pair && DT.data.grantBoard) return pairBoard(DT.qs().pair);
     if (DT.data.mode === 'demo' && (!T.me || T.me.role !== 'teacher')) { T.me = { role: 'teacher', key: 'teacher', name: '선생님' }; await DT.data.signIn(T.me); }
     try { T.tb = DT.render.flatten(await DT.data.getCourse()); } catch (e) { T.tb = null; }
@@ -279,6 +279,7 @@
     const dueTime = () => { const d = new Date(); if (due === 'tomorrow') d.setDate(d.getDate() + 1); if (due === 'week') d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0); return d.getTime(); };
     async function sendW(w, close) {
       if (!w.items.length) return DT.toast('문항이 없어요.', 'bad');
+      const bad = DT.ws.check(w); if (bad) return DT.toast(bad, 'bad');
       if (w.items.some((it) => it.type === 'group') && !w.groups) w.groups = await DT.data.getGroups(T.classId);
       await DT.data.createAssignment(Object.assign(w, { classId: T.classId, courseId: C.courseId, due: dueTime() }));
       close(); await loadAll(); T.aid = T.assignments[0] && T.assignments[0].id; T.tab = 'result'; route('worksheets'); DT.toast(cls().name + '에 보냈어요. 학생 화면에 바로 나타나요.');
@@ -290,11 +291,12 @@
       close0();
       DT.modal({ title: '학습지 직접 만들기', body: DT.ws.editor(w, pool), wide: true, cls: 'modal--tall modal--xl', sticky: true, actions: [{ label: '닫기' },
         { label: '미리 보기', icon: 'eye', onClick: () => (w.items.length ? DT.ws.openPreview(w) : DT.toast('문항이 없어요.', 'bad')) },
-        { label: '인쇄', icon: 'print', onClick: () => (w.items.length ? DT.ws.print(w, cls().name) : DT.toast('문항이 없어요.', 'bad')) },
+        { label: '인쇄', icon: 'print', onClick: () => (!w.items.length ? DT.toast('문항이 없어요.', 'bad') : DT.ws.check(w) ? DT.toast(DT.ws.check(w), 'bad') : DT.ws.print(w, cls().name)) },
         { label: cls().name + '에 보내기', kind: 'ink', icon: 'send', onClick: (close) => sendW(w, close) }] });
     }
     DT.modal({ title: '학습지 보내기', body: box, wide: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(T.tb, [...picked], kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } },
       { label: '인쇄', icon: 'print', onClick: () => { const w = DT.ws.build(T.tb, [...picked], kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.print(w, cls().name); } },
+      { label: '문제 모음 PDF·인쇄', icon: 'download', onClick: () => { const w = DT.ws.compile(T.tb, [...picked]); if (!w.items.length) return DT.toast('이 범위에는 문제가 없어요.', 'bad'); DT.ws.print(w, cls().name, { sections: true }); } },
       { label: '직접 만들기·고치기', icon: 'pencil', onClick: (close) => editW(close) },
       { label: cls().name + '에 보내기', kind: 'ink', icon: 'send', onClick: async (close) => {
       const w = DT.ws.build(T.tb, [...picked], kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad');

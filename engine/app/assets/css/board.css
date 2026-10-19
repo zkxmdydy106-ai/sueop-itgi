@@ -219,3 +219,9 @@
 .b-extra__text > b { font-size: 26px; }
 .b-extra__text > span { color: var(--ink-2); font-size: 18px; }
 .b-extra__btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* 크게 보기: 칠판으로 가져온 그림 (판서 아래에 깔림) */
+.focus__figbg { position: absolute; left: 130px; top: 32px; max-width: calc(100% - 160px); pointer-events: none; }
+.focus__figbg img { display: block; width: 100%; height: auto; }
+.focus__figctl { position: absolute; right: 20px; top: 20px; z-index: 6; display: flex; gap: 8px; }
+.focus__figctl .obtn { min-width: 52px; justify-content: center; font-size: 22px; }

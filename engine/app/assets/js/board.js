@@ -341,6 +341,24 @@
     const fio = inkIO(key); const surf = new DT.ink.Surface(board, 1220, 984, { key, load: fio.load, save: fio.save }); fio.sync(surf);
     const bar2 = DT.ink.toolbar(board, {});
     bar2.open(true);
+    /* 그림 가져오기: 왼쪽 문제의 그림을 오른쪽 칠판에 크게 놓고 그 위에 바로 판서 (이 문제에서 다시 열면 그대로) */
+    const figs = (b._figs || []).filter((f) => f.src);
+    const figKey = 'focusfig.' + C.courseId + '.' + key;
+    const figCtl = DT.el('div', { class: 'focus__figctl' });
+    function placeFig(st) {
+      DT.$$('.focus__figbg', board).forEach((x) => x.remove()); figCtl.innerHTML = ''; figCtl.remove();
+      if (!st) { DT.store.del(figKey); return; }
+      DT.store.set(figKey, st);
+      const im = DT.el('img', { alt: '가져온 그림' }); DT.data.asset(figs[st.i].src).then((u) => { im.src = u; });
+      board.prepend(DT.el('div', { class: 'focus__figbg', style: { width: Math.round(st.w * 100) + '%' } }, im));
+      const sbtn = (t, label, fn) => DT.el('button', { class: 'obtn', type: 'button', 'aria-label': label, title: label, html: t, onclick: fn });
+      figCtl.append(sbtn('－', '그림 작게', () => placeFig(Object.assign({}, st, { w: Math.max(0.3, st.w - 0.1) }))), sbtn('＋', '그림 크게', () => placeFig(Object.assign({}, st, { w: Math.min(1, st.w + 0.1) }))), sbtn(DT.icon('x') + '그림 빼기', '그림 빼기', () => placeFig(null)));
+      board.append(figCtl);
+    }
+    if (figs.length) {
+      figs.forEach((f, i) => actions.append(DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('expand') + (figs.length > 1 ? '그림 ' + (i + 1) + ' ' : '그림 ') + '칠판으로', onclick: () => placeFig({ i, w: 0.7 }) })));
+      const saved = DT.store.get(figKey, null); if (saved && figs[saved.i]) placeFig(saved);
+    }
     const close = () => { surf.destroy(); bar2.el.remove(); DT.ink.set({ tool: 'hand' }); ov.remove(); S.surface && S.surface.focus(); popEsc(); };
     closeB.onclick = close; pushEsc(close);
   }
@@ -461,7 +479,7 @@
     function ids() { if (scope === 'now') return [s.id]; if (scope === 'upto') return sub.screens.slice(0, s._local + 1).map((x) => x.id); return sub.screens.map((x) => x.id); }
     function paint() { const w = DT.ws.build(S.tb, ids(), kind); const n = w.items.length; prev.innerHTML = n ? '<b style="color:var(--ink)">' + n + '문항</b>이 만들어져요 — ' + DT.esc(w.items.slice(0, 4).map((i) => DT.plain(i.label)).join(', ')) + (n > 4 ? ' …' : '') : '이 범위에는 이 종류로 만들 내용이 없어요. 범위를 넓히거나 다른 종류를 골라 주세요.'; }
     paint();
-    DT.modal({ title: S.className + '에 학습지 보내기', body: wrap, wide: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } }, { label: '보내기', kind: 'ink', icon: 'send', onClick: async (close) => {
+    DT.modal({ title: S.className + '에 학습지 보내기', body: wrap, wide: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } }, { label: '인쇄', icon: 'print', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.print(w, S.className); } }, { label: '문제 모음 PDF·인쇄', icon: 'download', onClick: () => { const w = DT.ws.compile(S.tb, ids()); if (!w.items.length) return DT.toast('이 범위에는 문제가 없어요.', 'bad'); DT.ws.print(w, S.className, { sections: true }); } }, { label: '보내기', kind: 'ink', icon: 'send', onClick: async (close) => {
       const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad');
       const d = new Date(); if (due === 'today') d.setHours(23, 59, 0, 0); else if (due === 'tomorrow') { d.setDate(d.getDate() + 1); d.setHours(23, 59, 0, 0); } else { d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0); }
       if (kind === 'group') w.groups = await DT.data.getGroups(S.classId);

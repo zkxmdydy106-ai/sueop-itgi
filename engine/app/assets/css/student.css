@@ -225,3 +225,14 @@
 .join-prev { margin: 0; padding: 12px 14px; border-radius: var(--r-m); background: var(--paper-2, #F6F1E7); color: var(--ink-2); font-size: 17px; }
 .join-prev.is-ready { background: var(--accent-wash); color: var(--ink); font-weight: 700; }
 .login__card > .btn--lg { min-height: 56px; font-size: 19px; }
+
+/* 답 입력 자판 (숫자 + 단원 기호) */
+.keypad { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 4fr); grid-template-areas: 'nums syms' 'row row'; gap: 10px; margin-top: 10px; user-select: none; -webkit-user-select: none; }
+.keypad__nums { grid-area: nums; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.keypad__syms { grid-area: syms; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; align-content: start; }
+.keypad__row { grid-area: row; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.keypad button { min-height: 50px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--white); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; touch-action: manipulation; }
+.keypad button.is-sym { background: var(--paper-2); font-family: 'Times New Roman', serif; }
+.keypad button.is-wide { font-size: 16px; }
+.keypad button.is-del { background: var(--paper-2); }
+.keypad button:active { transform: scale(.96); background: var(--accent-wash); }
