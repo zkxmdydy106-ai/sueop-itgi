@@ -8,9 +8,55 @@
   const Ink = (DT.ink = {});
 
   Ink.state = { tool: 'hand', color: '#17191B', size: 4, penSeen: false };
+  /* 판서 색: 도구 줄에는 6칸. 「색 바꾸기」로 칸마다 다른 색을 고르면 이 기기에 기억한다 */
+  Ink.defaults = {
+    paper: ['#17191B', '#D32F45', '#1F5FBF', '#1C8A4A', '#E8730C', '#7B3FB5'],
+    chalk: ['#F7F5EE', '#FFD84A', '#FF8E8E', '#8FD3FF', '#A8E06A', '#FFB067']
+  };
+  /* 고를 수 있는 색 — 종류별 */
+  Ink.colorSets = [
+    ['기본', ['#17191B', '#5F6368', '#D32F45', '#1F5FBF', '#1C8A4A', '#E8730C', '#7B3FB5', '#8B5A2B']],
+    ['진한 색', ['#000000', '#8E1B2C', '#0D2F6B', '#0F5130', '#A04A00', '#4A1F75', '#5C3317', '#1F3A3D']],
+    ['밝은 색', ['#FF5C7A', '#3D8BFF', '#2EB872', '#FF9F1C', '#A66BFF', '#00A8B5', '#E84FB0', '#C9A227']],
+    ['파스텔', ['#F7F5EE', '#FFD84A', '#FF8E8E', '#8FD3FF', '#A8E06A', '#FFB067', '#D7B4FF', '#FFC4DD']],
+    ['형광', ['#FFF200', '#39FF14', '#FF3EA5', '#00E5FF', '#FF9100', '#B2FF59', '#FF5252', '#E040FB']]
+  ];
   Ink.palette = {
-    paper: ['#17191B', '#D32F45', '#1F5FBF', '#1C8A4A'],
-    chalk: ['#F7F5EE', '#FFD84A', '#FF8E8E', '#8FD3FF']
+    paper: (DT.store.get('ink.slots.paper') || Ink.defaults.paper).slice(0, 6),
+    chalk: (DT.store.get('ink.slots.chalk') || Ink.defaults.chalk).slice(0, 6)
+  };
+  ['paper', 'chalk'].forEach((k) => { while (Ink.palette[k].length < 6) Ink.palette[k].push(Ink.defaults[k][Ink.palette[k].length]); });
+  /* 칸 색 바꾸기 창 — 위: 지금 6칸(바꿀 칸 고르기) / 아래: 종류별 색 */
+  Ink.editColors = function (which, onDone) {
+    const pal = Ink.palette[which];
+    let pick = Math.max(0, pal.indexOf(Ink.state.color));
+    const body = DT.el('div', { class: 'inkcol' });
+    const slots = DT.el('div', { class: 'inkcol__slots' });
+    const paint = () => {
+      slots.innerHTML = '';
+      pal.forEach((c, i) => {
+        const b = DT.el('button', { class: 'inkcol__slot' + (i === pick ? ' is-on' : ''), type: 'button', 'aria-label': (i + 1) + '번 칸', style: { '--c': c } });
+        b.addEventListener('click', () => { pick = i; paint(); });
+        slots.append(b);
+      });
+    };
+    body.append(DT.el('p', { class: 'inkcol__hint' }, '① 바꿀 칸을 누르고 ② 아래에서 새 색을 누르세요.'), slots);
+    Ink.colorSets.forEach(([name, list]) => {
+      const row = DT.el('div', { class: 'inkcol__row' });
+      list.forEach((c) => {
+        const b = DT.el('button', { class: 'inkcol__c', type: 'button', 'aria-label': name + ' ' + c, style: { '--c': c } });
+        b.addEventListener('click', () => {
+          const was = pal[pick]; pal[pick] = c; DT.store.set('ink.slots.' + which, pal.slice());
+          if (Ink.state.color === was) Ink.set({ color: c }); else Ink.set({});
+          paint();
+        });
+        row.append(b);
+      });
+      body.append(DT.el('div', { class: 'inkcol__set' }, DT.el('b', null, name), row));
+    });
+    paint();
+    DT.modal({ title: which === 'chalk' ? '판서 색 바꾸기 (초록 칠판)' : '판서 색 바꾸기', body, cls: 'inkcol-modal', onClose: onDone,
+      actions: [{ label: '처음 색으로', onClick: () => { Ink.defaults[which].forEach((c, i) => { pal[i] = c; }); DT.store.del('ink.slots.' + which); Ink.set({}); paint(); } }, { label: '다 했어요', kind: 'ink' }] });
   };
   Ink.sizes = [3, 5, 9];
   Ink.active = null;
@@ -198,6 +244,9 @@
       });
     };
     panel.append(sw);
+    const more = DT.el('button', { class: 'inkbar__more', type: 'button', title: '판서 색 바꾸기', html: DT.icon('palette') + '<span>색 바꾸기</span>' });
+    more.addEventListener('click', () => Ink.editColors(opt.chalk && opt.chalk() ? 'chalk' : 'paper'));
+    panel.append(more);
     const sizes = DT.el('div', { class: 'inkbar__sizes' });
     Ink.sizes.forEach((s, i) => {
       const b = DT.el('button', { class: 'inkbar__size', type: 'button', 'aria-label': ['가늘게', '보통', '굵게'][i], style: { '--d': (6 + i * 5) + 'px' } });
