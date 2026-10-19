@@ -71,7 +71,7 @@
   /* 내 문제 쓰기 */
   function customForm(onAdd) {
     const type = DT.el('select', { class: 'select', 'aria-label': '문제 종류' }, [['short', '단답형 (자동 채점)'], ['choice', '객관식 (자동 채점)'], ['ox', 'O / X (자동 채점)'], ['open', '서술형 (선생님 확인)']].map(([v, t]) => DT.el('option', { value: v }, t)));
-    const q = DT.el('textarea', { class: 'textarea', rows: 3, placeholder: '문제를 적어 주세요. 수식은 $\\vec{a}+\\vec{b}$ 처럼 $ 사이에' });
+    const q = DT.el('textarea', { class: 'textarea', rows: 3, placeholder: '문제를 적어 주세요. 수식은 아래 「수식 넣기」 버튼을 누르면 들어가요.' });
     const extra = DT.el('div', { style: { display: 'grid', gap: '8px' } });
     let get = () => null;
     function paint() {
@@ -88,7 +88,22 @@
     type.onchange = paint; paint();
     const add = DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('plus') + '학습지에 넣기' });
     add.onclick = () => { if (!q.value.trim()) return DT.toast('문제를 적어 주세요.', 'bad'); const r = get(); if (typeof r === 'string') return DT.toast(r, 'bad'); onAdd(Object.assign({ id: uid(), label: '선생님 문제', q: q.value.trim(), mine: true }, r)); q.value = ''; paint(); };
-    return DT.el('div', { class: 'wse-form' }, type, q, extra, add);
+    /* 수식 넣기: 버튼을 누르면 수식이 들어가고 바꿀 글자(예: AB)가 골라져 있어 바로 타자로 바꾸면 된다. $ 기호를 몰라도 됨 */
+    let last = q; const form = DT.el('div', { class: 'wse-form' });
+    form.addEventListener('focusin', (e) => { if (e.target.matches('textarea, input')) last = e.target; });
+    const MATH = [['벡터 AB', '\\overrightarrow{AB}', 'AB'], ['벡터 a', '\\vec{a}', 'a'], ['크기 |a|', '|\\vec{a}|', 'a'], ['분수', '\\frac{1}{2}', '1'], ['루트', '\\sqrt{2}', '2'], ['제곱', 'x^{2}', 'x'], ['아래첨자', 'x_{1}', 'x'],
+      ['내적', '\\vec{a}\\cdot\\vec{b}', 'a'], ['선분 AB', '\\overline{AB}', 'AB'], ['좌표', '(1, 2)', '1'], ['θ', '\\theta', ''], ['π', '\\pi', ''], ['°', '^\\circ', ''], ['≤', '\\le', ''], ['≥', '\\ge', ''], ['×', '\\times', '']];
+    const pal = DT.el('div', { class: 'wse-math' }, DT.el('span', { class: 'muted' }, '수식 넣기'), MATH.map(([lab, tex, sel]) => {
+      const b = DT.el('button', { class: 'chip', type: 'button', title: lab, html: DT.md('$' + tex + '$') + (/[가-힣]/.test(lab) ? ' <small>' + lab.replace(/[^가-힣 ]/g, '').trim() + '</small>' : '') });
+      b.addEventListener('pointerdown', (e) => e.preventDefault());
+      b.onclick = () => { const el = last || q; const p0 = el.selectionStart == null ? el.value.length : el.selectionStart; const ins = '$' + tex + '$'; el.value = el.value.slice(0, p0) + ins + el.value.slice(el.selectionEnd == null ? p0 : el.selectionEnd); el.focus(); const at = sel ? ins.indexOf(sel) : ins.length; el.setSelectionRange(p0 + at, p0 + at + (sel ? sel.length : 0)); el.dispatchEvent(new Event('input')); };
+      return b; }));
+    /* 학생에게 보이는 모습 */
+    const prev = DT.el('div', { class: 'wse-prev' }); const paintPrev = () => { prev.innerHTML = q.value.trim() ? '<small>학생에게 이렇게 보여요</small>' + DT.md(q.value) : '<small>문제를 적으면 학생에게 보이는 모습이 여기에 나와요</small>'; };
+    q.addEventListener('input', paintPrev); paintPrev();
+    add.addEventListener('click', () => setTimeout(paintPrev, 0));
+    form.append(type, q, pal, prev, extra, add);
+    return form;
   }
 
   const summary = (it) => DT.plain(it.type === 'blank' ? String(it.x || '').replace(/\[\[([^\]]+)\]\]/g, '( )') : it.q || (it.prompts || []).join(' / ') || (it.criteria || []).map((c) => c.text).join(', ') || '').slice(0, 70);
@@ -205,13 +220,15 @@
     }
     let ol = DT.el('ol', { class: 'wsp__list' }); body.append(ol);
     const key = (t) => (opt.answers ? DT.el('div', { class: 'wsp__key', html: (custom ? '답: ' : '정답: ') + t }) : null);
-    const secOf = (it) => it.concept || String(it.label || '').split(' · ')[0] || '문제';
+    /* 묶음 제목: 개념(변형) → 종류 → 교과서 화면 제목. 수식은 글자로 남기지 않고 바꿔서 보인다 */
+    const KIND = { blank: '개념 빈칸', self: '자기평가', reflect: '한 줄 정리', group: '모둠 활동', roles: '모둠 활동', peer: '모둠 활동', career: '진로 탐구' };
+    const secOf = (it) => it.concept || KIND[it.type] || (it.mine ? '선생님 문제' : (it.src && it.src.title) || '문제');
     let sec = null, no = 0, sn = 0;
     w.items.forEach((it) => {
       no++;
       if ((opt.sections || custom) && secOf(it) !== sec) {   /* 개념(또는 종류)마다 제목 — 양식에서는 「1. 제목」 */
         sec = secOf(it); if (ol.children.length) { ol = DT.el('ol', { class: 'wsp__list', start: String(no) }); }
-        body.append(DT.el('h2', { class: 'wsp__sec' }, custom ? (++sn) + '. ' + sec.replace(/^교과서 문제 · /, '') : sec), ol);
+        body.append(DT.el('h2', { class: 'wsp__sec', html: DT.md(custom ? (++sn) + '. ' + sec.replace(/^교과서 문제 · /, '') : sec) }), ol);
       }
       const li = DT.el('li', { class: 'wsp__item' });
       let lab = opt.sections && it.variant ? '변형' : it.label || '';
@@ -219,7 +236,7 @@
       li.append(DT.el('div', { class: 'wsp__lab', html: DT.md(lab) + (it.src && it.src.page ? ' <small>(교과서 ' + it.src.page + '쪽)</small>' : '') }));
       if (it.type === 'blank') {
         let n = 0; const ans = it.answers || [];
-        li.append(DT.el('div', { class: 'wsp__q', html: DT.md(String(it.x || '').replace(/\[\[([^\]]+?)\]\]/g, () => { const k = n++; return opt.answers ? '<u>' + DT.esc(ans[k] || '') + '</u>' : '(' + '①②③④⑤⑥⑦⑧⑨⑩'[k] + '　　　　　)'; })) }));
+        li.append(DT.el('div', { class: 'wsp__q', html: DT.md(String(it.x || '').replace(/\[\[([^\]]+?)\]\]/g, () => { const k = n++; return opt.answers ? '__' + (ans[k] || '') + '__' : '(' + '①②③④⑤⑥⑦⑧⑨⑩'[k] + '　　　　　)'; })) }));
         if (!opt.answers && it.bank && it.bank.length) li.append(DT.el('div', { class: 'wsp__bank' }, '보기: ' + it.bank.join('　')));
       } else if (it.type === 'self') li.append(DT.el('table', { class: 'wsp__self' }, DT.el('tr', null, DT.el('th', null, '할 수 있나요?'), ...W.levels.map((l) => DT.el('th', null, l))), ...(it.criteria || []).map((c) => DT.el('tr', null, DT.el('td', { html: DT.md(c.text) }), ...W.levels.map(() => DT.el('td', null, '□'))))));
       else if (it.type === 'reflect') li.append(DT.el('div', { class: 'wsp__q' }, it.q), DT.el('div', { class: 'wsp__lines' }), DT.el('div', { class: 'wsp__q' }, it.q2), DT.el('div', { class: 'wsp__lines' }));

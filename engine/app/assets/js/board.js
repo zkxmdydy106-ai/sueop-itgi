@@ -505,6 +505,7 @@
   function askFromBlock(b) {
     const g = b.grade || {};
     const type = g.type === 'choice' ? 'choice' : g.type === 'ox' ? 'ox' : 'short';
+    if (!b.grade && b.t === 'prob') return sendAsk({ text: b.q + (b.sub && b.sub.length ? '\n' + b.sub.map((x, i) => '(' + (i + 1) + ') ' + x).join('   ') : ''), type: 'draw', key: [], label: b.label });   /* 그림·서술 문제: 그리기 판으로 */
     if (b.sub && b.sub.length > 1 && type === 'short') {   /* ⑴⑵… 여러 문항: 문항마다 칸을 나눠 묻는다 */
       const ks = Array.isArray(g.key) && g.key.length === b.sub.length ? g.key.map(String) : b.sub.map(() => '');
       return sendAsk({ text: b.q, type: 'short', parts: b.sub, pkeys: ks, key: [], label: b.label, mode: g.type });
@@ -554,6 +555,7 @@
       if (q.type === 'ox') groups = ['O', 'X'].map((v) => [v, rows.filter((r) => r.value === v).length]);
       else if (q.type === 'choice') groups = (q.choices || []).map((c, i) => [String(i + 1), rows.filter((r) => String(r.value) === String(i + 1)).length, c]);   // 번호는 1부터 (교과서 ①=1)
       else if (q.parts) { paintParts(); return; }
+      else if (q.type === 'draw') { paintDraw(); return; }
       else { const m = {}; rows.forEach((r) => { const k = DT.norm(r.value) || '(빈칸)'; m[k] = m[k] || [r.value, 0]; m[k][1]++; }); groups = Object.values(m).sort((a, b) => b[1] - a[1]).slice(0, 7); }
       const max = Math.max(1, ...groups.map((g) => g[1]));
       groups.forEach((g) => {
@@ -561,6 +563,18 @@
         const label = q.type === 'choice' ? (['①', '②', '③', '④', '⑤'][+g[0] - 1] || '') + ' ' + DT.plain(g[2] || '') : g[0];
         bars.append(DT.el('div', { class: 'askbar' + (isKey ? ' is-key' : '') }, DT.el('span', { class: 'askbar__label', title: label }, label), DT.el('div', { class: 'askbar__track' }, DT.el('div', { class: 'askbar__fill', style: { width: (g[1] / max * 100) + '%' } })), DT.el('span', { class: 'askbar__n' }, g[1] + '명')));
       });
+    }
+    /* 그림 답: 학생 그림을 작게 모아 보기 · 누르면 크게 */
+    function paintDraw() {
+      const grid = DT.el('div', { class: 'askdraws' });
+      rows.forEach((r) => {
+        const who = (S.roster.find((x) => x.key === r.key) || {}); const nm = who.name || '';
+        const cell = DT.el('button', { class: 'askdraw', type: 'button', title: nm }, DT.drawThumb(r.value, 300, 180), DT.el('span', null, nm));
+        cell.onclick = () => DT.modal({ title: nm + ' 학생 풀이', wide: true, body: DT.el('div', null, DT.drawThumb(r.value, 900, 520)) });
+        grid.append(cell);
+      });
+      if (!rows.length) grid.append(DT.el('p', { class: 'muted' }, '학생들이 그려서 보내면 여기에 모여요.'));
+      bars.append(grid);
     }
     /* 여러 문항: 문항마다 맞은 학생 수(정답 공개 뒤)와 많이 나온 답 */
     function paintParts() {

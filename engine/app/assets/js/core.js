@@ -63,6 +63,68 @@
   };
   /* 여러 문항(⑴⑵…) 즉석 답: 한 칸에 이어 붙여 보낸다 */
   DT.PSEP = ' ;; ';
+  /* 문제에 맞는 답 칸: 정답 모양을 보고 칸을 나눈다
+     (5, 2) → ( □ , □ )  ·  m=1, n=2 → m = □  n = □  ·  그 밖 → 한 칸.  값은 정답과 같은 모양으로 이어 붙여 채점된다 */
+  DT.ansFields = function (key, onInput) {
+    const k0 = String(key || '').split('|')[0].replace(/\s/g, '');
+    const box = DT.el('div', { class: 'ansf' }); const ins = [];
+    const mk = (ph) => { const i = DT.el('input', { class: 'ans-input ansf__in', placeholder: ph, inputmode: 'none', autocomplete: 'off', 'aria-label': ph || '답' }); i.addEventListener('input', () => onInput && onInput()); ins.push(i); return i; };
+    const tup = k0.match(/^([A-Za-z]?)\(([^()]*,[^()]*)\)$/);
+    const named = !tup && /^[a-zA-Z]\w*=[^,=]+(,[a-zA-Z]\w*=[^,=]+)+$/.test(k0) ? k0.split(',').map((x) => x.split('=')[0]) : null;
+    let value, set;
+    if (tup) {
+      const n = tup[2].split(',').length; box.classList.add('ansf--tuple');
+      box.append(DT.el('span', { class: 'ansf__p' }, '('));
+      for (let i = 0; i < n; i++) { if (i) box.append(DT.el('span', { class: 'ansf__p' }, ',')); box.append(mk(['x 성분', 'y 성분', 'z 성분'][i] || '')); }
+      box.append(DT.el('span', { class: 'ansf__p' }, ')'));
+      value = () => (ins.every((i) => !i.value.trim()) ? '' : '(' + ins.map((i) => i.value.trim()).join(',') + ')');
+      set = (v) => { const m = String(v || '').match(/\(([^()]*)\)/); if (m) m[1].split(',').forEach((x, i) => { if (ins[i]) ins[i].value = x.trim(); }); };
+    } else if (named) {
+      box.classList.add('ansf--named');
+      named.forEach((nm) => box.append(DT.el('label', { class: 'ansf__lab' }, DT.el('b', null, nm + ' ='), mk(''))));
+      value = () => (ins.every((i) => !i.value.trim()) ? '' : named.map((nm, i) => nm + '=' + ins[i].value.trim()).join(','));
+      set = (v) => String(v || '').split(',').forEach((p) => { const [a, b] = p.split('='); const i = named.indexOf((a || '').trim()); if (i >= 0 && ins[i]) ins[i].value = (b || '').trim(); });
+    } else {
+      box.append(mk(/,/.test(k0) ? '답이 여러 개면 쉼표(,)로 나눠요' : '답을 적어요'));
+      value = () => ins[0].value.trim(); set = (v) => { ins[0].value = v || ''; };
+    }
+    let cur = ins[0]; box.addEventListener('focusin', (e) => { if (ins.includes(e.target)) cur = e.target; });
+    return { el: box, inputs: ins, value, set, current: () => cur };
+  };
+  /* 자판 기호: 단원 기호 + 정답에 글자·식이 들어가면 x y z a b e + = 도 */
+  DT.keysPlus = (base, key) => {
+    const k = String(key || ''); const out = base.slice();
+    if (/[a-zA-Z=+]/.test(k)) ['x', 'y', 'z', 'a', 'b', 'e', '+', '='].forEach((c) => { if (!out.includes(c)) out.push(c); });
+    if (/[₁₂₃]/.test(k)) ['₁', '₂', '₃'].forEach((c) => { if (!out.includes(c)) out.push(c); });
+    return out;
+  };
+  /* 그리기 판 (그림·서술 문제): 손가락·애플펜슬로 그리고, 값은 선 데이터(JSON) */
+  DT.drawPad = function (opt) {
+    opt = opt || {}; const W = opt.w || 900, H = opt.h || 520;
+    let strokes = opt.value ? (() => { try { return JSON.parse(opt.value); } catch (e) { return []; } })() : [];
+    const host = DT.el('div', { class: 'drawpad', style: { aspectRatio: W + ' / ' + H } });
+    DT.ink.set({ tool: 'pen' });   /* 펜을 먼저 켜야 판이 손가락·펜을 받는다 */
+    const surf = new DT.ink.Surface(host, W, H, { load: () => strokes, save: (st) => { strokes = st; opt.onInput && opt.onInput(); } });
+    surf.focus && surf.focus();
+    const tb = DT.el('div', { class: 'drawpad__bar' },
+      DT.el('span', { class: 'muted' }, '손가락이나 애플펜슬로 풀이를 그려요'),
+      DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('pen') + '펜', onclick: () => DT.ink.set({ tool: 'pen' }) }),
+      DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('eraser') + '지우개', onclick: () => DT.ink.set({ tool: 'eraser' }) }),
+      DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('undo') + '되돌리기', onclick: () => surf.undo() }),
+      DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', html: DT.icon('trash') + '모두 지우기', onclick: () => surf.clear() }));
+    return { el: DT.el('div', { class: 'drawpad-wrap' }, tb, host), value: () => (strokes.length ? JSON.stringify(strokes) : ''), destroy: () => surf.destroy() };
+  };
+  /* 선 데이터 → 작은 그림 (칠판 응답판·선생님 확인용) */
+  DT.drawThumb = function (json, w, h) {
+    const cv = DT.el('canvas', { class: 'drawthumb' }); cv.width = w; cv.height = h; const g = cv.getContext('2d');
+    let st = []; try { st = JSON.parse(json || '[]'); } catch (e) {}
+    let mx = 1, my = 1; st.forEach((s) => { for (let i = 0; i < (s.p || []).length; i += 2) { mx = Math.max(mx, s.p[i]); my = Math.max(my, s.p[i + 1]); } });
+    const k = Math.min(w / Math.max(mx + 10, 300), h / Math.max(my + 10, 180));
+    g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.lineCap = 'round'; g.lineJoin = 'round';
+    st.forEach((s) => { const p = s.p || []; if (p.length < 2) return; g.strokeStyle = s.c || '#17191B'; g.globalAlpha = s.t === 'hl' ? 0.3 : 1; g.lineWidth = Math.max(1, (s.s || 3) * k * (s.t === 'hl' ? 4 : 1)); g.beginPath(); g.moveTo(p[0] * k, p[1] * k); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i] * k, p[i + 1] * k); g.stroke(); });
+    return cv;
+  };
+  DT.isDrawing = (v) => typeof v === 'string' && v.startsWith('[{') && v.includes('"p"');
   DT.qs = () => {
     const out = {};
     const add = (str) => str.replace(/^[?#]/, '').split('&').forEach((kv) => { if (!kv) return; const [k, v = ''] = kv.split('='); out[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' ')); });

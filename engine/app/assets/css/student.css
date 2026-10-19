@@ -240,3 +240,19 @@
 .livepart { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; align-items: center; margin-top: 8px; }
 .livepart__q { font-size: 20px; }
 .livepart .ans-input { min-height: 52px; }
+
+/* 문제에 맞는 답 칸 */
+.ansf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ansf .ansf__in { flex: 1 1 120px; min-width: 90px; }
+.ansf--tuple .ansf__in { flex: 1 1 80px; text-align: center; }
+.ansf__p { font-size: 34px; font-family: 'Times New Roman', serif; }
+.ansf__lab { display: flex; align-items: center; gap: 8px; flex: 1 1 160px; }
+.ansf__lab b { font-family: 'Times New Roman', serif; font-size: 24px; font-style: italic; }
+/* 그리기 판 */
+.drawpad-wrap { display: grid; gap: 8px; margin-top: 8px; }
+.drawpad__bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.drawpad__bar .muted { flex: 1; font-size: 14px; }
+.drawpad { position: relative; width: 100%; background: #fff; border: 2px solid var(--line-2); border-radius: 16px; overflow: hidden; touch-action: none;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px; }
+.drawpad .ink-layer, .drawpad .ink-laser { position: absolute; inset: 0; }
+.livesheet--draw { max-height: 92vh; overflow-y: auto; }

@@ -180,6 +180,14 @@ async def main():
                     await sub.click(); await st.wait_for_timeout(600)
                     if await st.is_visible('.modal__foot .btn--ink, .modal__foot .btn--accent'): await st.click('.modal__foot .btn--ink, .modal__foot .btn--accent'); await st.wait_for_timeout(800)
             await step('학생 학습지 %d' % (i + 1), solve(), st, '학생')
+        # 수식·태그가 글자로 찍히면 안 된다: 인쇄물(학생용·정답)과 편집기 화면의 글자에서 $·\명령·<u> 찾기
+        raw = await t.evaluate(r"""(async () => { const tb = DT.render.flatten(await DT.data.getCourse()); const bad = [];
+          const RX = /\$[^$\s]|\\(frac|vec|overrightarrow|overline|mathrm|sqrt|cdot|theta|circ|times)\b|<\/?u>|<\/?b>|\[\[|\]\]/;
+          for (const u of tb._subunits) { const ids = u.screens.map((x) => x.id);
+            for (const w of [DT.ws.compile(tb, ids), DT.ws.build(tb, ids, 'concept'), DT.ws.build(tb, ids, 'practice'), DT.ws.build(tb, ids, 'exit')]) {
+              for (const ans of [false, true]) { const el = DT.ws.paper(w, { answers: ans, sections: true }); document.body.append(el); const m = el.innerText.match(RX); if (m) bad.push(u.title + (ans ? ' 정답' : ' 학생용') + ': ' + el.innerText.slice(Math.max(0, m.index - 30), m.index + 40).replace(/\n/g, ' ')); el.remove(); } } }
+          return bad.slice(0, 8); })()""")
+        for r in raw: errs.append('[인쇄] 글자로 찍힌 수식·태그: ' + r)
         # 실제로 일이 일어났는지 (아무것도 못 눌렀는데 '오류 없음'이 되지 않게)
         stat = await t.evaluate("(async () => { const a = await DT.data.listAssignments({}); const s = await DT.data.listSubmissions({}); const l = await DT.data.listLessons({}); return { 학습지: a.length, 제출: s.filter(x => x.submittedAt).length, 일지: l.length }; })()")
         print('만든 것:', stat)
