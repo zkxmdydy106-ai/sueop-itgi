@@ -71,7 +71,7 @@
   /* 내 문제 쓰기 */
   function customForm(onAdd) {
     const type = DT.el('select', { class: 'select', 'aria-label': '문제 종류' }, [['short', '단답형 (자동 채점)'], ['choice', '객관식 (자동 채점)'], ['ox', 'O / X (자동 채점)'], ['open', '서술형 (선생님 확인)']].map(([v, t]) => DT.el('option', { value: v }, t)));
-    const q = DT.el('textarea', { class: 'textarea', rows: 3, placeholder: '문제를 적어 주세요. 수식은 아래 「수식 넣기」 버튼을 누르면 들어가요.' });
+    const q = richBox('문제를 적어 주세요. 수식은 아래 「수식 넣기」 버튼으로 넣어요.');
     const extra = DT.el('div', { style: { display: 'grid', gap: '8px' } });
     let get = () => null;
     function paint() {
@@ -87,23 +87,74 @@
     }
     type.onchange = paint; paint();
     const add = DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('plus') + '학습지에 넣기' });
-    add.onclick = () => { if (!q.value.trim()) return DT.toast('문제를 적어 주세요.', 'bad'); const r = get(); if (typeof r === 'string') return DT.toast(r, 'bad'); onAdd(Object.assign({ id: uid(), label: '선생님 문제', q: q.value.trim(), mine: true }, r)); q.value = ''; paint(); };
-    /* 수식 넣기: 버튼을 누르면 수식이 들어가고 바꿀 글자(예: AB)가 골라져 있어 바로 타자로 바꾸면 된다. $ 기호를 몰라도 됨 */
-    let last = q; const form = DT.el('div', { class: 'wse-form' });
-    form.addEventListener('focusin', (e) => { if (e.target.matches('textarea, input')) last = e.target; });
-    const MATH = [['벡터 AB', '\\overrightarrow{AB}', 'AB'], ['벡터 a', '\\vec{a}', 'a'], ['크기 |a|', '|\\vec{a}|', 'a'], ['분수', '\\frac{1}{2}', '1'], ['루트', '\\sqrt{2}', '2'], ['제곱', 'x^{2}', 'x'], ['아래첨자', 'x_{1}', 'x'],
-      ['내적', '\\vec{a}\\cdot\\vec{b}', 'a'], ['선분 AB', '\\overline{AB}', 'AB'], ['좌표', '(1, 2)', '1'], ['θ', '\\theta', ''], ['π', '\\pi', ''], ['°', '^\\circ', ''], ['≤', '\\le', ''], ['≥', '\\ge', ''], ['×', '\\times', '']];
-    const pal = DT.el('div', { class: 'wse-math' }, DT.el('span', { class: 'muted' }, '수식 넣기'), MATH.map(([lab, tex, sel]) => {
-      const b = DT.el('button', { class: 'chip', type: 'button', title: lab, html: DT.md('$' + tex + '$') + (/[가-힣]/.test(lab) ? ' <small>' + lab.replace(/[^가-힣 ]/g, '').trim() + '</small>' : '') });
+    add.onclick = () => { const qv = q.get(); if (!qv.trim()) return DT.toast('문제를 적어 주세요.', 'bad'); const r = get(); if (typeof r === 'string') return DT.toast(r, 'bad'); onAdd(Object.assign({ id: uid(), label: '선생님 문제', q: qv.trim(), mine: true }, r)); q.set(''); paint(); };
+    /* 수식 넣기: 버튼 → 바꿀 글자만 적는 작은 창 → 칸에는 학생 화면과 같은 모양으로 들어간다 ($ 기호를 몰라도 됨) */
+    const pal = DT.el('div', { class: 'wse-math' }, DT.el('span', { class: 'muted' }, '수식 넣기'), TPL.map((t, ti) => {
+      const b = DT.el('button', { class: 'chip', type: 'button', title: t.lab, html: DT.tex(t.tex(t.f.map((x) => x[1])), false) + (/[가-힣]/.test(t.lab) ? ' <small>' + t.lab + '</small>' : '') });
       b.addEventListener('pointerdown', (e) => e.preventDefault());
-      b.onclick = () => { const el = last || q; const p0 = el.selectionStart == null ? el.value.length : el.selectionStart; const ins = '$' + tex + '$'; el.value = el.value.slice(0, p0) + ins + el.value.slice(el.selectionEnd == null ? p0 : el.selectionEnd); el.focus(); const at = sel ? ins.indexOf(sel) : ins.length; el.setSelectionRange(p0 + at, p0 + at + (sel ? sel.length : 0)); el.dispatchEvent(new Event('input')); };
+      b.onclick = () => q.insert(ti);
       return b; }));
-    /* 학생에게 보이는 모습 */
-    const prev = DT.el('div', { class: 'wse-prev' }); const paintPrev = () => { prev.innerHTML = q.value.trim() ? '<small>학생에게 이렇게 보여요</small>' + DT.md(q.value) : '<small>문제를 적으면 학생에게 보이는 모습이 여기에 나와요</small>'; };
-    q.addEventListener('input', paintPrev); paintPrev();
-    add.addEventListener('click', () => setTimeout(paintPrev, 0));
-    form.append(type, q, pal, prev, extra, add);
+    const form = DT.el('div', { class: 'wse-form' });
+    form.append(type, q.el, pal, DT.el('p', { class: 'muted', style: { margin: 0, fontSize: '13px' } }, '칸에 보이는 모양 그대로 학생에게 보여요. 수식을 누르면 글자를 바꿀 수 있어요.'), extra, add);
     return form;
+  }
+
+  /* 수식 틀: 바꿀 칸(이름·기본값)과 만들어지는 수식 */
+  const TPL = [
+    { lab: '벡터', f: [['벡터 이름', 'AB']], tex: (v) => '\\overrightarrow{' + v[0] + '}' },
+    { lab: '벡터 a', f: [['글자', 'a']], tex: (v) => '\\vec{' + v[0] + '}' },
+    { lab: '크기', f: [['글자', 'a']], tex: (v) => '|\\vec{' + v[0] + '}|' },
+    { lab: '분수', f: [['분자(위)', '1'], ['분모(아래)', '2']], tex: (v) => '\\frac{' + v[0] + '}{' + v[1] + '}' },
+    { lab: '루트', f: [['루트 안', '2']], tex: (v) => '\\sqrt{' + v[0] + '}' },
+    { lab: '거듭제곱', f: [['밑', 'x'], ['지수', '2']], tex: (v) => v[0] + '^{' + v[1] + '}' },
+    { lab: '아래첨자', f: [['글자', 'x'], ['첨자', '1']], tex: (v) => v[0] + '_{' + v[1] + '}' },
+    { lab: '내적', f: [['앞 벡터', 'a'], ['뒤 벡터', 'b']], tex: (v) => '\\vec{' + v[0] + '}\\cdot\\vec{' + v[1] + '}' },
+    { lab: '선분', f: [['선분 이름', 'AB']], tex: (v) => '\\overline{' + v[0] + '}' },
+    { lab: '좌표·성분', f: [['값 (쉼표로)', '1, 2']], tex: (v) => '(' + v[0] + ')' },
+    { lab: 'θ', f: [], tex: () => '\\theta' }, { lab: 'π', f: [], tex: () => '\\pi' }, { lab: '°', f: [], tex: () => '^{\\circ}' },
+    { lab: '≤', f: [], tex: () => '\\le' }, { lab: '≥', f: [], tex: () => '\\ge' }, { lab: '×', f: [], tex: () => '\\times' }, { lab: '÷', f: [], tex: () => '\\div' }];
+
+  /* 보이는 그대로 쓰는 칸: 글자는 그냥 치고, 수식은 완성된 모양의 덩어리로 들어간다. 값은 저장할 때만 $수식$ 글로 바꾼다 */
+  function richBox(ph) {
+    const el = DT.el('div', { class: 'wse-rich', contenteditable: 'true', role: 'textbox', 'aria-multiline': 'true', 'data-ph': ph });
+    let range = null;
+    const keep = () => { const sel = getSelection(); if (sel.rangeCount && el.contains(sel.anchorNode)) range = sel.getRangeAt(0).cloneRange(); };
+    ['keyup', 'mouseup', 'input', 'touchend'].forEach((ev) => el.addEventListener(ev, keep));
+    const chip = (ti, vals) => {
+      const t = TPL[ti]; const tex = t.tex(vals);
+      const c = DT.el('span', { class: 'wse-mchip', contenteditable: 'false', 'data-tex': tex, 'data-ti': String(ti), 'data-v': JSON.stringify(vals), html: DT.tex(tex, false), title: '눌러서 고치기' });
+      c.addEventListener('click', () => ask(ti, vals, (nv) => c.replaceWith(chip(ti, nv))));
+      return c;
+    };
+    function ask(ti, vals, done) {
+      const t = TPL[ti]; if (!t.f.length) return done([]);
+      const ins = t.f.map((f, k) => DT.el('input', { class: 'input', value: vals[k] != null ? vals[k] : f[1], 'aria-label': f[0] }));
+      const pv = DT.el('div', { class: 'wse-prev' }); const show = () => { pv.innerHTML = DT.tex(t.tex(ins.map((x) => x.value || ' ')), false); };
+      ins.forEach((x) => (x.oninput = show)); show();
+      DT.modal({ title: t.lab + ' 넣기', body: DT.el('div', { style: { display: 'grid', gap: '8px' } }, ...t.f.map((f, k) => DT.el('label', { class: 'field' }, DT.el('span', null, f[0]), ins[k])), DT.el('span', { class: 'muted' }, '이렇게 보여요'), pv),
+        actions: [{ label: '취소' }, { label: '넣기', kind: 'ink', onClick: (c) => { c(); done(ins.map((x) => x.value.trim() || ' ')); } }] });
+      setTimeout(() => { ins[0].focus(); ins[0].select(); }, 50);
+    }
+    function insert(ti) {
+      ask(ti, [], (vals) => {
+        const c = chip(ti, vals); const sp = document.createTextNode('\u00a0');
+        if (range && el.contains(range.startContainer)) { range.deleteContents(); range.insertNode(sp); range.insertNode(c); }
+        else el.append(c, sp);
+        el.focus(); const r = document.createRange(); r.setStartAfter(sp); r.collapse(true); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); range = r.cloneRange();
+      });
+    }
+    function get() {
+      const out = [];
+      const walk = (n) => n.childNodes.forEach((x) => {
+        if (x.nodeType === 3) out.push(x.nodeValue.replace(/\u00a0/g, ' '));
+        else if (x.classList && x.classList.contains('wse-mchip')) out.push('$' + x.dataset.tex + '$');
+        else if (x.nodeName === 'BR') out.push('\n');
+        else { if (/^(DIV|P)$/.test(x.nodeName) && out.length) out.push('\n'); walk(x); }
+      });
+      walk(el); return out.join('').replace(/[ \t]+\n/g, '\n').trim();
+    }
+    function set(v) { el.innerHTML = ''; String(v || '').split(/(\$[^$]+\$)/).forEach((part) => { if (/^\$[^$]+\$$/.test(part)) el.append(DT.el('span', { class: 'wse-mchip', contenteditable: 'false', 'data-tex': part.slice(1, -1), html: DT.tex(part.slice(1, -1), false) })); else if (part) el.append(document.createTextNode(part)); }); }
+    return { el, get, set, insert };
   }
 
   const summary = (it) => DT.plain(it.type === 'blank' ? String(it.x || '').replace(/\[\[([^\]]+)\]\]/g, '( )') : it.q || (it.prompts || []).join(' / ') || (it.criteria || []).map((c) => c.text).join(', ') || '').slice(0, 70);

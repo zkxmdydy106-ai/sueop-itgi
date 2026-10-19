@@ -235,3 +235,9 @@ a.btn { text-decoration: none; }
 .wse-math .chip small { font-size: 11px; color: var(--ink-2); }
 .wse-prev { padding: 10px 12px; border-radius: 12px; background: var(--paper-2); font-size: 17px; line-height: 1.7; min-height: 48px; }
 .wse-prev small { display: block; font-size: 12px; color: var(--ink-2); }
+/* 보이는 그대로 쓰는 문제 칸 */
+.wse-rich { min-height: 96px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--white); font-size: 18px; line-height: 1.9; white-space: pre-wrap; outline: none; }
+.wse-rich:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--accent-wash); }
+.wse-rich:empty::before { content: attr(data-ph); color: var(--ink-3, #999); }
+.wse-mchip { display: inline-block; padding: 0 3px; margin: 0 1px; border-radius: 6px; background: var(--accent-wash); cursor: pointer; user-select: none; }
+.wse-mchip:hover { outline: 1.5px solid var(--accent); }
