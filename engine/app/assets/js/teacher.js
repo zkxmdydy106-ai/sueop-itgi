@@ -41,6 +41,7 @@
   }
   function fatal(msg) { view().innerHTML = ''; view().append(DT.el('div', { class: 'empty-c' }, DT.el('b', null, '열 수 없어요'), DT.el('span', null, msg))); }
   function login() {
+    if (DT.data.onSignedIn && !T.watchLogin) { T.watchLogin = true; DT.data.onSignedIn(() => location.reload()); }
     $('#nav').innerHTML = ''; top('선생님 로그인');
     const me = T.me;
     view().append(DT.el('div', { class: 'empty-c' }, DT.el('b', null, me ? me.email + ' 계정은 선생님 명단에 없어요' : '선생님 계정으로 로그인해 주세요'), DT.el('span', null, '설정한 선생님 구글 계정으로 들어오면 반 기록을 볼 수 있어요.'), DT.el('button', { class: 'btn btn--ink', type: 'button', style: { justifySelf: 'center', marginTop: '10px' }, html: DT.icon('user') + '구글 계정으로 로그인', onclick: async () => { await DT.data.signIn(); location.reload(); } })));

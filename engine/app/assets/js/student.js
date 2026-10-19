@@ -35,6 +35,7 @@
   function err(msg) { const m = shell('수업잇기'); m.append(DT.el('div', { class: 'empty' }, DT.el('b', null, '열 수 없어요'), DT.el('span', null, msg))); }
 
   async function login() {
+    if (DT.data.onSignedIn && !S.watchLogin) { S.watchLogin = true; DT.data.onSignedIn(() => location.reload()); addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser && !S.me) location.reload(); }); }
     const m = shell('수업잇기');
     const brand = DT.el('div', { class: 'login__brand' }, DT.el('span', { class: 'pill' }, '학생용'), DT.el('h1', null, '오늘 배울 내용과', DT.el('br'), '학습지가 여기 있어요'), DT.el('p', null, '선생님이 보낸 학습지를 풀고, 수업 중에는 이해했는지 신호를 보낼 수 있어요.'));
     const card = DT.el('div', { class: 'login__card' });

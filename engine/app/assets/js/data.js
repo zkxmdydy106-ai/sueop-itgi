@@ -9,7 +9,8 @@
   const C = DT.config;
 
   /* ─────────────────────────── 공통 계산 ─────────────────────────── */
-  const subId = (aid, key) => aid + '__' + String(key).replace(/[^a-zA-Z0-9가-힣._-]/g, '_');
+  const skey = (key) => String(key).replace(/[^a-zA-Z0-9가-힣._-]/g, '_');   /* 보안 규칙 myKey() 와 같은 규칙 */
+  const subId = (aid, key) => aid + '__' + skey(key);
   const byTime = (k) => (a, b) => (a[k] || 0) - (b[k] || 0);
 
   /* ─────────────── 기기 안 저장소: 교과서·쪽 그림을 한 번 받으면 다음부터 바로 연다 ───────────────
@@ -219,6 +220,8 @@
         }
       },
       async signOut() { await auth.signOut(); me = null; },
+      /* 로그인 창(새 탭)에서 로그인이 끝나면 원래 탭도 알아채게: 아이폰에서 창이 닫힌 뒤 멈춰 있지 않도록 */
+      onSignedIn(cb) { let first = true; return auth.onAuthStateChanged((u) => { if (first) { first = false; if (u) return; } if (u) cb(u); }); },
       /* 칠판 QR 로그인 — 칠판: pairStart → QR(teacher.html?pair=…) → onGrant 기다림. 휴대폰: grantBoard */
       async pairStart() { if (!auth.currentUser || !auth.currentUser.isAnonymous) await auth.signInAnonymously(); return auth.currentUser.uid; },
       onGrant(uid, cb) { return fs.collection('boardGrants').doc(uid).onSnapshot((d) => { if (d.exists && (d.data().exp || 0) > Date.now()) cb(d.data()); }, () => {}); },
@@ -327,10 +330,10 @@
       },
       async setLive(classId, patch) { await fs.collection('live').doc(classId).set(Object.assign({ classId }, patch, { at: ts() }), { merge: true }); },
       onLive(classId, cb) { return fs.collection('live').doc(classId).onSnapshot((d) => cb(d.exists ? d.data() : null), () => cb(null)); },
-      async sendLiveAnswer(classId, qid, key, value) { await fs.collection('liveAnswers').doc(classId + '__' + qid + '__' + subId('', key)).set({ classId, qid, key, value, at: ts() }); },
+      async sendLiveAnswer(classId, qid, key, value) { await fs.collection('liveAnswers').doc(classId + '__' + qid + '__' + skey(key)).set({ classId, qid, key, value, at: ts() }); },
       onLiveAnswers(classId, qid, cb) { return fs.collection('liveAnswers').where('classId', '==', classId).where('qid', '==', qid).onSnapshot((s) => cb(docs(s))); },
       async listLiveAnswers(classId) { return docs(await fs.collection('liveAnswers').where('classId', '==', classId).get()); },
-      async sendSignal(classId, key, screenId, level) { await fs.collection('signals').doc(classId + '__' + screenId + '__' + subId('', key)).set({ classId, key, screenId, level, at: ts() }); },
+      async sendSignal(classId, key, screenId, level) { await fs.collection('signals').doc(classId + '__' + screenId + '__' + skey(key)).set({ classId, key, screenId, level, at: ts() }); },
       onSignals(classId, cb) { return fs.collection('signals').where('classId', '==', classId).onSnapshot((s) => cb(docs(s))); },
       async listSignals(f) { let q = fs.collection('signals'); if (f.classId) q = q.where('classId', '==', f.classId); if (f.key) q = q.where('key', '==', f.key); return docs(await q.get()); },
       async sendQuestion(classId, text, screenId) { await fs.collection('questions').add({ classId, text, screenId, at: ts(), done: false }); },
