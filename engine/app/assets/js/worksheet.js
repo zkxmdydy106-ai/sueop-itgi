@@ -77,6 +77,7 @@
   W.variants = (tb, scope, per) => variantItems(subsOf(tb, scope), per);
   /* 문제 모음: 범위 안의 교과서 문제 + 변형 문제 전부, 개념별로 (인쇄·PDF용) */
   W.compile = (tb, scope) => {
+    W._tb = tb;
     const subs = subsOf(tb, scope);
     const book = probItems(tb, screensIn(tb, scope), subs).map((it) => Object.assign({}, it, { concept: '교과서 문제 · ' + (it.src && it.src.title || '') }));
     return { title: subs.map((u) => DT.plain(u.title)).join(', ') + ' · 문제 모음', kind: 'custom', items: book.concat(variantItems(subs)), scope, subunitIds: subs.map((u) => u.id) };
@@ -155,7 +156,7 @@
 
   /* 학습지 만들기 → { title, kind, items, scope, subunitIds } */
   W.build = function (tb, scope, kind, opt) {
-    opt = opt || {};
+    opt = opt || {}; W._tb = tb;   /* 인쇄 양식이 단원 이름을 쓴다 */
     const screens = screensIn(tb, scope); const subs = subsOf(tb, scope);
     let items = [];
     if (kind === 'concept') items = blankItems(tb, screens);

@@ -82,6 +82,8 @@ def main():
     shutil.copy(os.path.join(ROOT, 'engine', 'firebase', 'firestore.rules'), os.path.join(course, 'firestore.rules'))
     ex = os.path.join(course, 'extras')   # 연결된 수업 활동 파일(예: 드론 미션) — 교과서 내용이 아닌 선생님 작품만 둔다
     if os.path.isdir(ex): shutil.copytree(ex, os.path.join(course, 'app', 'extras'), dirs_exist_ok=True)
+    pr = os.path.join(course, 'print')   # 이 반 학습지 인쇄 양식(config.js 의 printCss) — 선생님 것이라 저장소에는 없음
+    if os.path.isdir(pr): shutil.copytree(pr, os.path.join(course, 'app', 'print'), dirs_exist_ok=True)
     run([py, 'tools/deploy/prepare_firebase.py', course, '--config', cfg] + sum([['--teacher', t] for t in conf['teachers']], []))
     project0 = json.load(open(os.path.join(course, '.firebaserc'), encoding='utf-8'))['projects']['default']
     key0 = open(os.path.join(course, '.sharekey')).read().strip() if os.path.exists(os.path.join(course, '.sharekey')) else ''

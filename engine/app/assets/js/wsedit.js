@@ -185,20 +185,37 @@
   /* 종이 학습지 (인쇄용). opt.answers: 정답을 빨갛게 같이 */
   W.paper = function (w, opt) {
     opt = opt || {}; const C = DT.config;
-    const pg = DT.el('article', { class: 'wsp' });
-    pg.append(DT.el('header', { class: 'wsp__head' }, DT.el('div', null, DT.el('small', null, [C.school, opt.cls].filter(Boolean).join(' · ')), DT.el('h1', null, w.title + (opt.answers ? ' (정답)' : ''))),
-      DT.el('div', { class: 'wsp__who' }, '학번 ________　이름 ____________')));
-    let ol = DT.el('ol', { class: 'wsp__list' }); pg.append(ol);
-    const key = (t) => (opt.answers ? DT.el('div', { class: 'wsp__key', html: '정답: ' + t }) : null);
-    let sec = null, no = 0;
+    /* 반마다 자기 학습지 양식: config.printCss 가 있으면 「큰 제목 + <학습지> + 단원명 칸 + 쪽마다 테두리」 틀에 담고,
+       모양(글꼴·테두리·색·풀이 칸)은 그 CSS(작업물/<교과서>/print/)가 정한다. 없으면 기본 양식. */
+    const custom = !!C.printCss;
+    const tb = W._tb; const subs = tb && w.subunitIds ? w.subunitIds.map((id) => (tb._subunits || []).find((u) => u.id === id)).filter(Boolean) : [];
+    const unitTitle = tb && tb.units && tb.units[0] ? DT.plain(tb.units[0].title || '') : '';
+    const pg = DT.el('article', { class: 'wsp' + (custom ? ' wsp--custom' : '') });
+    let body = pg;
+    if (custom) {
+      body = DT.el('td', { class: 'wspc-body' });
+      pg.append(DT.el('div', { class: 'wspc-frame' }), DT.el('table', { class: 'wspc' },
+        DT.el('thead', null, DT.el('tr', null, DT.el('td', null,
+          DT.el('div', { class: 'wspc-top' }, DT.el('span', { class: 'wspc-course' }, unitTitle.replace(/^[ⅠⅡⅢⅣⅤⅥ\d.\s]+/, '') || w.title), DT.el('span', { class: 'wspc-kind' }, '<학습지>' + (opt.answers ? ' 정답' : '')), DT.el('span', { class: 'wspc-who' }, '학번 ________ 이름 __________')),
+          DT.el('div', { class: 'wspc-unit' }, DT.el('b', null, '단원명'), DT.el('span', null, subs.length ? subs.map((u) => DT.plain(u.title)).join(', ') : w.title))))),
+        DT.el('tbody', null, DT.el('tr', null, body))));
+    } else {
+      pg.append(DT.el('header', { class: 'wsp__head' }, DT.el('div', null, DT.el('small', null, [C.school, opt.cls].filter(Boolean).join(' · ')), DT.el('h1', null, w.title + (opt.answers ? ' (정답)' : ''))),
+        DT.el('div', { class: 'wsp__who' }, '학번 ________　이름 ____________')));
+    }
+    let ol = DT.el('ol', { class: 'wsp__list' }); body.append(ol);
+    const key = (t) => (opt.answers ? DT.el('div', { class: 'wsp__key', html: (custom ? '답: ' : '정답: ') + t }) : null);
+    const secOf = (it) => it.concept || String(it.label || '').split(' · ')[0] || '문제';
+    let sec = null, no = 0, sn = 0;
     w.items.forEach((it) => {
       no++;
-      if (opt.sections && (it.concept || '') !== sec) {   /* 문제 모음: 개념마다 제목 */
-        sec = it.concept || ''; if (ol.children.length) { ol = DT.el('ol', { class: 'wsp__list', start: String(no) }); }
-        pg.append(DT.el('h2', { class: 'wsp__sec' }, sec || '문제'), ol);
+      if ((opt.sections || custom) && secOf(it) !== sec) {   /* 개념(또는 종류)마다 제목 — 양식에서는 「1. 제목」 */
+        sec = secOf(it); if (ol.children.length) { ol = DT.el('ol', { class: 'wsp__list', start: String(no) }); }
+        body.append(DT.el('h2', { class: 'wsp__sec' }, custom ? (++sn) + '. ' + sec.replace(/^교과서 문제 · /, '') : sec), ol);
       }
       const li = DT.el('li', { class: 'wsp__item' });
-      const lab = opt.sections && it.variant ? '변형' : it.label || '';
+      let lab = opt.sections && it.variant ? '변형' : it.label || '';
+      if (custom) { const m = String(lab).match(/^(문제|예제|보기|확인)\s*\d+/); lab = it.variant ? '변형' : m ? m[0] : lab; }
       li.append(DT.el('div', { class: 'wsp__lab', html: DT.md(lab) + (it.src && it.src.page ? ' <small>(교과서 ' + it.src.page + '쪽)</small>' : '') }));
       if (it.type === 'blank') {
         let n = 0; const ans = it.answers || [];
@@ -215,15 +232,15 @@
         if (it.sub && it.sub.length) li.append(DT.el('ol', { class: 'wsp__sub' }, it.sub.map((s) => DT.el('li', { html: DT.md(s) }))));
         if (it.choices) li.append(DT.el('div', { class: 'wsp__choices' }, it.choices.map((c, k) => DT.el('span', { html: '①②③④⑤'[k] + ' ' + DT.md(c) }))));
         if (it.type === 'ox') li.append(DT.el('div', { class: 'wsp__q' }, '( O ,  X )'));
-        if (it.type === 'short') li.append(DT.el('div', { class: 'wsp__q' }, '답: ______________'));
-        if (it.type === 'open') li.append(DT.el('div', { class: 'wsp__box' }));
+        if (it.type === 'short' && !(custom && opt.answers)) li.append(DT.el('div', { class: 'wsp__q' }, '답: ______________'));
+        if (it.type === 'open' && !(custom && opt.answers)) li.append(DT.el('div', { class: 'wsp__box' }));
         const k = it.key && it.key.length ? it.key.map((x) => DT.esc(String(x).split('|')[0])).join(', ') : it.ans ? DT.md(it.ans) : '';
         if (k) { const kk = key(it.type === 'choice' ? '①②③④⑤'[+it.key[0] - 1] : k); if (kk) li.append(kk); }
       }
       if (it.figs && it.figs.length) { const f = DT.el('div', { class: 'wsp__figs' }); it.figs.forEach((src) => { const im = DT.el('img', { alt: '' }); DT.data.asset(src).then((u) => { im.src = u; }); f.append(im); }); li.append(f); }
       ol.append(li);
     });
-    pg.append(DT.el('footer', { class: 'wsp__foot' }, '출처: 교과서 — 수업 목적으로만 사용' + (w.items.some((it) => it.variant) ? ' · 「변형」은 교과서 문제의 숫자·조건을 바꾼 문제' : '')));
+    body.append(DT.el('footer', { class: 'wsp__foot' }, '출처: 교과서 — 수업 목적으로만 사용' + (w.items.some((it) => it.variant) ? ' · 「변형」은 교과서 문제의 숫자·조건을 바꾼 문제' : '')));
     return pg;
   };
 
@@ -236,8 +253,11 @@
       pa.innerHTML = ''; document.body.classList.add('is-printing');
       addEventListener('afterprint', () => document.body.classList.remove('is-printing'), { once: true });
       pa.append(W.paper(w, { answers, cls: clsName, sections: popt.sections }));
+      /* 반 양식 CSS를 처음 한 번 불러온다 */
+      const C = DT.config; let cssReady = Promise.resolve();
+      if (C.printCss && !document.getElementById('printCss')) { const l = DT.el('link', { rel: 'stylesheet', id: 'printCss', href: C.printCss }); cssReady = new Promise((ok) => { l.onload = l.onerror = ok; setTimeout(ok, 2000); }); document.head.append(l); }
       const imgs = DT.$$('img', pa); let left = imgs.length;
-      const fire = () => setTimeout(() => window.print(), 150);
+      const fire = () => cssReady.then(() => setTimeout(() => window.print(), 150));
       if (!left) return fire();
       const t = setTimeout(fire, 2500); imgs.forEach((im) => { im.onload = im.onerror = () => { if (--left === 0) { clearTimeout(t); fire(); } }; });
     };
