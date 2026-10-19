@@ -28,7 +28,9 @@ service cloud.firestore {
       // 학생 링크(?j=코드)로 들어온 학생은 자기 줄을 한 번 만들 수 있다 — 학년·반·번호·이름만, 고치기·빼기는 선생님만
       allow create: if isTeacher() || (signedIn() && em == email()
         && request.resource.data.keys().hasOnly(['no', 'name', 'classId', 'code', 'ok', 'at', 'self'])
-        && request.resource.data.classId is string && request.resource.data.classId.matches('^[1-6]학년-[0-9]{1,2}반$')
+        && request.resource.data.classId is string
+        && (request.resource.data.classId.matches('^[1-6]학년-[0-9]{1,2}반$')   // 학년·반 번호로 들어오거나
+            || request.resource.data.classId in get(/databases/$(db)/documents/join/$(request.resource.data.code)).data.get('classIds', []))   // 선생님이 정한 반(예: 선택과목 기하반)
         && request.resource.data.no is string && request.resource.data.no.matches('^[0-9]{3,6}$')
         && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 20
         && request.resource.data.self == true && request.resource.data.ok is bool

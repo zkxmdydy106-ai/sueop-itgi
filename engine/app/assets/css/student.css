@@ -236,3 +236,7 @@
 .keypad button.is-wide { font-size: 16px; }
 .keypad button.is-del { background: var(--paper-2); }
 .keypad button:active { transform: scale(.96); background: var(--accent-wash); }
+
+.livepart { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; align-items: center; margin-top: 8px; }
+.livepart__q { font-size: 20px; }
+.livepart .ans-input { min-height: 52px; }

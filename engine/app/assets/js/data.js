@@ -92,6 +92,8 @@
       async approveMember() {},
       async removeMember(key) { db.roster = col('roster').filter((r) => r.key !== key); changed('roster'); },
       async joinCode() { return ''; },
+      async joinInfo() { return null; },
+      async setJoinClasses() {},
       async boardCode() { return null; },
       async joinOpen() { return null; },
       async setJoinOpen() {},
@@ -301,6 +303,9 @@
       async removeMember(key) { await fs.collection('members').doc(key).delete(); },
       async boardCode() { const d = await fs.collection('config').doc('board').get().catch(() => null); return d && d.exists ? d.data() : null; },
       async joinCode() { const d = await fs.collection('config').doc('join').get().catch(() => null); return d && d.exists ? d.data().code || '' : ''; },
+      /* 선생님이 정한 반 이름(선택과목 등): join/{코드}.classIds·classNames — 학생은 학년·반 대신 이 중에서 고른다 */
+      async joinInfo(code) { const d = await fs.collection('join').doc(code).get().catch(() => null); return d && d.exists ? d.data() : null; },
+      async setJoinClasses(names) { const c = await api.joinCode(); if (!c) return; const ids = names.map((n) => n.replace(/[^0-9가-힣a-zA-Z]+/g, '-')); await fs.collection('join').doc(c).set({ classIds: ids, classNames: names }, { merge: true }); for (let i = 0; i < ids.length; i++) await fs.collection('classes').doc(ids[i]).set({ id: ids[i], name: names[i] }, { merge: true }); },
       async joinOpen() { const c = await api.joinCode(); if (!c) return null; const d = await fs.collection('join').doc(c).get().catch(() => null); return d && d.exists ? d.data().open !== false : null; },
       async setJoinOpen(open) { const c = await api.joinCode(); if (c) await fs.collection('join').doc(c).set({ open: !!open }, { merge: true }); },
       async createAssignment(a) {

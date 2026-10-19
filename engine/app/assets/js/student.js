@@ -63,7 +63,34 @@
   }
 
   /* 학생 링크(?j=)로 처음 들어온 학생: 학년·반·번호·이름만 적으면 명단에 들어간다 (선생님이 명단을 넣지 않아도 됨) */
-  function joinForm() {
+  /* 선생님이 반 이름을 정해 둔 경우(선택과목 「기하반」 등): 반을 고르고 학번만 */
+  function joinFormNamed(info) {
+    const m = shell('수업잇기');
+    const ids = info.classIds || [], names = info.classNames || ids;
+    const cs = DT.el('select', { class: 'select', 'aria-label': '반' }, ids.map((id, i) => DT.el('option', { value: id }, names[i] || id)));
+    const no = DT.el('input', { class: 'input', type: 'number', inputmode: 'numeric', placeholder: '학번 (예: 20105)', 'aria-label': '학번' });
+    const nm = DT.el('input', { class: 'input', maxlength: '20', placeholder: '이름', 'aria-label': '이름', value: S.me.name && !String(S.me.name).includes('@') ? S.me.name : '' });
+    const prev = DT.el('p', { class: 'join-prev' });
+    const ok = () => /^\d{3,6}$/.test(no.value.trim()) && nm.value.trim();
+    const paint = () => { prev.textContent = ok() ? (names[ids.indexOf(cs.value)] || cs.value) + ' · ' + no.value.trim() + ' ' + nm.value.trim() : '반을 고르고 학번·이름을 적어 주세요'; prev.classList.toggle('is-ready', !!ok()); };
+    [cs, no, nm].forEach((x) => (x.oninput = paint)); cs.onchange = paint; paint();
+    const go = DT.el('button', { class: 'btn btn--ink btn--lg', type: 'button' }, '우리 반에 들어가기');
+    go.onclick = async () => {
+      if (!ok()) return DT.toast('학번(숫자)과 이름을 적어 주세요.', 'bad');
+      go.disabled = true;
+      try {
+        const u = await DT.data.joinClass({ code: DT.store.get('st.join', ''), classId: cs.value, no: no.value.trim(), name: nm.value.trim() });
+        S.me = u; DT.store.del('st.join');
+        if (u && u.role === 'student') { await syncFixed().catch(() => {}); await enter(); } else waitApproval();
+      } catch (e) { go.disabled = false; DT.toast('들어가지 못했어요. 선생님께 새 QR을 받아 주세요.', 'bad'); }
+    };
+    m.append(DT.el('div', { class: 'login' }, DT.el('div', { class: 'login__brand' }, DT.el('span', { class: 'pill' }, '학생용'), DT.el('h1', null, '반가워요!'), DT.el('p', null, '반을 고르고 학번과 이름을 적으면 명단에 들어가요. 다음부터는 바로 열려요.')),
+      DT.el('div', { class: 'login__card' }, DT.el('h2', null, '처음 한 번만 적어요'), cs, no, nm, prev, go,
+        DT.el('p', { class: 'login__note' }, S.me.email + ' 계정으로 들어가요. ', DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', onclick: async () => { await DT.data.signOut(); location.reload(); } }, '다른 계정으로')))));
+  }
+  async function joinForm() {
+    const info = DT.data.joinInfo ? await DT.data.joinInfo(DT.store.get('st.join', '')).catch(() => null) : null;
+    if (info && (info.classIds || []).length) return joinFormNamed(info);
     const m = shell('수업잇기');
     const g = DT.el('select', { class: 'select', 'aria-label': '학년' }, [1, 2, 3].map((n) => DT.el('option', { value: String(n) }, n + '학년')));
     const num = (ph, max) => DT.el('input', { class: 'input', type: 'number', inputmode: 'numeric', min: '1', max: String(max), placeholder: ph, 'aria-label': ph });
@@ -515,7 +542,11 @@
     sheet = DT.el('div', { class: 'livesheet', role: 'dialog', 'aria-label': '선생님 질문' });
     sheet.append(DT.el('h3', null, '선생님 질문' + (q.label ? ' · ' + q.label : '')), DT.el('div', { class: 'livesheet__q', html: DT.md(q.text) }));
     const send = async (v) => { DT.store.set('st.lq.' + q.qid, v); await DT.data.sendLiveAnswer(S.me.classId, q.qid, S.me.key, v); sheetQ = null; onLive(); };
-    if (q.reveal) {
+    if (q.reveal && q.parts) {   /* 여러 문항: 문항마다 맞았는지 */
+      const mine = String(answered || '').split(DT.PSEP);
+      q.parts.forEach((pt, i) => { const kraw = String((q.pkeys || [])[i] || ''); const ks = kraw.split('|').map(DT.norm).filter(Boolean); const ok = answered != null && ks.includes(DT.norm(mine[i] || ''));
+        sheet.append(DT.el('div', { class: 'fb ' + (answered == null || !ks.length ? 'fb--note' : ok ? 'fb--ok' : 'fb--bad'), html: '<b>(' + (i + 1) + ')</b> ' + (answered == null ? '' : ok ? '맞았어요 ' : '다시 봐요 ') + (ks.length ? '· 정답 ' + DT.md(kraw.split('|')[0]) : '') })); });
+    } else if (q.reveal) {
       const keys = (q.key || []).flatMap((k) => String(k).split('|')).map(DT.norm);
       const ok = answered != null && keys.includes(DT.norm(answered));
       sheet.append(DT.el('div', { class: 'fb ' + (answered == null ? 'fb--note' : ok ? 'fb--ok' : 'fb--bad') }, answered == null ? '정답이 공개됐어요.' : ok ? '맞았어요!' : '다시 생각해 봐요. 선생님 설명을 들어 보세요.'), DT.el('button', { class: 'btn', type: 'button', onclick: () => { sheet.remove(); sheet = null; } }, '닫기'));
@@ -525,6 +556,11 @@
       const w = DT.el('div', { class: 'ox' }); ['O', 'X'].forEach((v) => w.append(DT.el('button', { type: 'button', onclick: () => send(v) }, v))); sheet.append(w);
     } else if (q.type === 'choice') {
       const numOnly = (q.choices || []).every((c) => !String(c || '').trim()); const cs = DT.el('div', { class: 'choices' + (numOnly ? ' choices--num' : '') }); (q.choices || []).forEach((c, k) => cs.append(DT.el('button', { class: 'choice', type: 'button', html: '<b>' + '①②③④⑤'[k] + '</b><span>' + DT.md(c) + '</span>', onclick: () => send(String(k + 1)) }))); sheet.append(cs);
+    } else if (q.parts) {   /* ⑴⑵… 문항마다 칸, 자판은 지금 누른 칸에 */
+      const ins = q.parts.map((pt, i) => DT.el('input', { class: 'ans-input', placeholder: '(' + (i + 1) + ') 답', 'aria-label': (i + 1) + '번 답', inputmode: 'none' }));
+      let cur = ins[0]; ins.forEach((x) => x.addEventListener('focus', () => { cur = x; }));
+      q.parts.forEach((pt, i) => sheet.append(DT.el('div', { class: 'livepart' }, DT.el('span', { class: 'livepart__q', html: '<b>(' + (i + 1) + ')</b> ' + DT.md(pt) }), ins[i])));
+      sheet.append(DT.keypad(() => cur, DT.keysFor(S.tb, q.screenId)), DT.el('button', { class: 'btn btn--ink', type: 'button', style: { marginTop: '10px' }, html: DT.icon('send') + '보내기', onclick: () => { if (ins.every((x) => !x.value.trim())) return DT.toast('답을 적어 주세요.', 'bad'); send(ins.map((x) => x.value.trim()).join(DT.PSEP)); } }));
     } else {
       const inp = DT.el('input', { class: 'ans-input', placeholder: '답을 적어요', 'aria-label': '답', inputmode: 'none' });
       sheet.append(DT.el('div', { class: 'ans-row' }, inp, DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('send') + '보내기', onclick: () => inp.value.trim() && send(inp.value.trim()) })), DT.keypad(inp, DT.keysFor(S.tb, q.screenId)));

@@ -479,13 +479,25 @@
     function ids() { if (scope === 'now') return [s.id]; if (scope === 'upto') return sub.screens.slice(0, s._local + 1).map((x) => x.id); return sub.screens.map((x) => x.id); }
     function paint() { const w = DT.ws.build(S.tb, ids(), kind); const n = w.items.length; prev.innerHTML = n ? '<b style="color:var(--ink)">' + n + '문항</b>이 만들어져요 — ' + DT.esc(w.items.slice(0, 4).map((i) => DT.plain(i.label)).join(', ')) + (n > 4 ? ' …' : '') : '이 범위에는 이 종류로 만들 내용이 없어요. 범위를 넓히거나 다른 종류를 골라 주세요.'; }
     paint();
-    DT.modal({ title: S.className + '에 학습지 보내기', body: wrap, wide: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } }, { label: '인쇄', icon: 'print', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.print(w, S.className); } }, { label: '문제 모음 PDF·인쇄', icon: 'download', onClick: () => { const w = DT.ws.compile(S.tb, ids()); if (!w.items.length) return DT.toast('이 범위에는 문제가 없어요.', 'bad'); DT.ws.print(w, S.className, { sections: true }); } }, { label: '보내기', kind: 'ink', icon: 'send', onClick: async (close) => {
-      const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad');
+    async function sendW(w, close) {
+      if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad');
+      const bad = DT.ws.check ? DT.ws.check(w) : ''; if (bad) return DT.toast(bad, 'bad');
       const d = new Date(); if (due === 'today') d.setHours(23, 59, 0, 0); else if (due === 'tomorrow') { d.setDate(d.getDate() + 1); d.setHours(23, 59, 0, 0); } else { d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0); }
-      if (kind === 'group') w.groups = await DT.data.getGroups(S.classId);
+      if (w.items.some((it) => it.type === 'group') && !w.groups) w.groups = await DT.data.getGroups(S.classId);
       const a = await DT.data.createAssignment(Object.assign(w, { classId: S.classId, courseId: C.courseId, due: d.getTime() }));
       if (S.lesson) { S.lesson.assignments.push(a.id); DT.store.set('board.lesson.' + C.courseId + '.' + S.classId, S.lesson); }
       close(); DT.toast(S.className + '에 보냈어요. 학생 화면에 바로 나타나요.');
+    }
+    /* 직접 고르기: 원하는 문제만 넣고 빼고, 빈칸 고르기, 내 문제 쓰기 */
+    function editW(close0) {
+      const w = DT.ws.build(S.tb, ids(), kind); w.kind = 'custom'; const pool = DT.ws.pool(S.tb, ids()); close0();
+      DT.modal({ title: '학습지 직접 고르기', body: DT.ws.editor(w, pool), wide: true, cls: 'modal--tall modal--xl', sticky: true, actions: [{ label: '닫기' },
+        { label: '미리 보기', icon: 'eye', onClick: () => (w.items.length ? DT.ws.openPreview(w) : DT.toast('문항이 없어요.', 'bad')) },
+        { label: '인쇄', icon: 'print', onClick: () => (!w.items.length ? DT.toast('문항이 없어요.', 'bad') : DT.ws.check(w) ? DT.toast(DT.ws.check(w), 'bad') : DT.ws.print(w, S.className)) },
+        { label: S.className + '에 보내기', kind: 'ink', icon: 'send', onClick: (close) => sendW(w, close) }] });
+    }
+    DT.modal({ title: S.className + '에 학습지 보내기', body: wrap, wide: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } }, { label: '인쇄', icon: 'print', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.print(w, S.className); } }, { label: '직접 고르기', icon: 'pencil', onClick: (close) => editW(close) }, { label: '문제 모음 PDF·인쇄', icon: 'download', onClick: () => { const w = DT.ws.compile(S.tb, ids()); if (!w.items.length) return DT.toast('이 범위에는 문제가 없어요.', 'bad'); DT.ws.print(w, S.className, { sections: true }); } }, { label: '보내기', kind: 'ink', icon: 'send', onClick: async (close) => {
+      const w = DT.ws.build(S.tb, ids(), kind); await sendW(w, close);
     } }] });
   }
 
@@ -493,6 +505,10 @@
   function askFromBlock(b) {
     const g = b.grade || {};
     const type = g.type === 'choice' ? 'choice' : g.type === 'ox' ? 'ox' : 'short';
+    if (b.sub && b.sub.length > 1 && type === 'short') {   /* ⑴⑵… 여러 문항: 문항마다 칸을 나눠 묻는다 */
+      const ks = Array.isArray(g.key) && g.key.length === b.sub.length ? g.key.map(String) : b.sub.map(() => '');
+      return sendAsk({ text: b.q, type: 'short', parts: b.sub, pkeys: ks, key: [], label: b.label, mode: g.type });
+    }
     sendAsk({ text: b.q, type, choices: g.choices, key: g.key != null ? [].concat(g.key) : (b.ans ? [DT.plain(b.ans)] : []), label: b.label, mode: g.type });
   }
   function openAsk() {
@@ -537,12 +553,25 @@
       let groups;
       if (q.type === 'ox') groups = ['O', 'X'].map((v) => [v, rows.filter((r) => r.value === v).length]);
       else if (q.type === 'choice') groups = (q.choices || []).map((c, i) => [String(i + 1), rows.filter((r) => String(r.value) === String(i + 1)).length, c]);   // 번호는 1부터 (교과서 ①=1)
+      else if (q.parts) { paintParts(); return; }
       else { const m = {}; rows.forEach((r) => { const k = DT.norm(r.value) || '(빈칸)'; m[k] = m[k] || [r.value, 0]; m[k][1]++; }); groups = Object.values(m).sort((a, b) => b[1] - a[1]).slice(0, 7); }
       const max = Math.max(1, ...groups.map((g) => g[1]));
       groups.forEach((g) => {
         const isKey = q.reveal && (q.type === 'choice' ? keys.includes(DT.norm(g[0])) : keys.includes(DT.norm(g[0])));
         const label = q.type === 'choice' ? (['①', '②', '③', '④', '⑤'][+g[0] - 1] || '') + ' ' + DT.plain(g[2] || '') : g[0];
         bars.append(DT.el('div', { class: 'askbar' + (isKey ? ' is-key' : '') }, DT.el('span', { class: 'askbar__label', title: label }, label), DT.el('div', { class: 'askbar__track' }, DT.el('div', { class: 'askbar__fill', style: { width: (g[1] / max * 100) + '%' } })), DT.el('span', { class: 'askbar__n' }, g[1] + '명')));
+      });
+    }
+    /* 여러 문항: 문항마다 맞은 학생 수(정답 공개 뒤)와 많이 나온 답 */
+    function paintParts() {
+      q.parts.forEach((pt, i) => {
+        const ks = String((q.pkeys || [])[i] || '').split('|').map(DT.norm).filter(Boolean);
+        const pv = (r) => String(r.value || '').split(DT.PSEP)[i] || '';
+        const m = {}; rows.forEach((r) => { const v = pv(r); const k = DT.norm(v) || '(빈칸)'; m[k] = m[k] || [v || '(빈칸)', 0]; m[k][1]++; });
+        const groups = Object.values(m).sort((a, b) => b[1] - a[1]).slice(0, 3); const max = Math.max(1, rows.length);
+        const right = rows.filter((r) => ks.includes(DT.norm(pv(r)))).length;
+        bars.append(DT.el('div', { class: 'askpart', html: '<b>(' + (i + 1) + ')</b> ' + DT.md(pt) + (q.reveal && ks.length ? ' <span class="askpart__ok">맞음 ' + right + '명</span>' : '') }));
+        groups.forEach((g) => { const isKey = q.reveal && ks.includes(DT.norm(g[0])); bars.append(DT.el('div', { class: 'askbar' + (isKey ? ' is-key' : '') }, DT.el('span', { class: 'askbar__label', title: g[0] }, g[0]), DT.el('div', { class: 'askbar__track' }, DT.el('div', { class: 'askbar__fill', style: { width: (g[1] / max * 100) + '%' } })), DT.el('span', { class: 'askbar__n num' }, g[1] + '명'))); });
       });
     }
     const off = DT.data.onLiveAnswers(S.classId, q.qid, (r) => { rows = r; paint(); });

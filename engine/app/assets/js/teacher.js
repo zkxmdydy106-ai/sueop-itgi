@@ -25,6 +25,7 @@
     if (T.tb) DT.applySubject(T.tb.meta.subject);
     T.classes = await DT.data.listClasses();
     [T.pending, T.join, T.joinOpen, T.board] = await Promise.all([DT.data.listPending().catch(() => []), DT.data.joinCode().catch(() => ''), DT.data.joinOpen().catch(() => null), DT.data.boardCode().catch(() => null)]);
+    T.joinInfo = T.join && DT.data.joinInfo ? await DT.data.joinInfo(T.join).catch(() => null) : null;
     T.classId = DT.store.get('t.class', null); if (!T.classes.find((c) => c.id === T.classId)) T.classId = T.classes[0] ? T.classes[0].id : null;
     const q = DT.qs(); if (q.v) T.view = q.v;
     await loadAll();
@@ -500,7 +501,7 @@
         DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', html: DT.icon('upload') + '명렬표로 한꺼번에 넣기', onclick: pasteRoster })));
     const studentUrl = DT.studentLink(T.join);
     const c2 = card('학생에게 링크 주기', null);
-    c2.append(DT.el('div', { class: 'row', style: { alignItems: 'flex-start', gap: '16px' } }, DT.chart.qr(studentUrl, 160), DT.el('div', { style: { display: 'grid', gap: '8px', flex: '1', minWidth: '0' } }, DT.el('p', { class: 'muted', style: { margin: 0 } }, '전자칠판에 이 QR을 띄우거나 클래스룸에 주소를 붙여 주세요. 학생은 학교 구글 계정으로 로그인하고 학년·반·번호만 적으면 명단에 저절로 들어와요.'), joinToggle(), DT.el('div', { class: 'linkbox' }, DT.el('code', null, studentUrl), DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('copy') + '복사', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(studentUrl); DT.toast('주소를 복사했어요.'); } })))));
+    c2.append(DT.el('div', { class: 'row', style: { alignItems: 'flex-start', gap: '16px' } }, DT.chart.qr(studentUrl, 160), DT.el('div', { style: { display: 'grid', gap: '8px', flex: '1', minWidth: '0' } }, DT.el('p', { class: 'muted', style: { margin: 0 } }, '전자칠판에 이 QR을 띄우거나 클래스룸에 주소를 붙여 주세요. 학생은 학교 구글 계정으로 로그인하고 학년·반·번호만 적으면 명단에 저절로 들어와요.'), joinToggle(), classNamer(), DT.el('div', { class: 'linkbox' }, DT.el('code', null, studentUrl), DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('copy') + '복사', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(studentUrl); DT.toast('주소를 복사했어요.'); } })))));
     /* 전자칠판에서 열기: 짧은 주소 + 6자리 코드 */
     const cb = T.board && T.board.code ? card('전자칠판에서 열기', DT.el('span', { class: 'sub' }, '반 밖으로 알리지 마세요')) : null;
     if (cb) cb.append(DT.el('div', { class: 'boardcode' },
@@ -560,6 +561,13 @@
     DT.modal({ title: cls().name + ' 명단', body: list, wide: true, actions: [{ label: '닫기', kind: 'ink', onClick: (c) => { c(); settings(); } }] });
   }
   /* 새 학생 받기 열기·닫기 (반 학생이 다 들어오면 닫아 두면 링크가 새도 아무도 못 들어옴) */
+  /* 선택과목처럼 반 이름을 정해 두면 학생은 학년·반 대신 그 반을 고르고 학번만 적는다 */
+  function classNamer() {
+    if (!T.join || !DT.data.setJoinClasses) return null;
+    const inp = DT.el('input', { class: 'input', placeholder: '예: 기하반 (여러 개면 쉼표로: 기하A, 기하B)', value: ((T.joinInfo && T.joinInfo.classNames) || []).join(', ') });
+    return DT.el('div', { style: { display: 'grid', gap: '6px' } }, DT.el('span', { class: 'muted' }, '선택과목 반 이름 — 비워 두면 학생이 학년·반 번호로 들어와요'),
+      DT.el('div', { class: 'row', style: { gap: '8px' } }, inp, DT.el('button', { class: 'btn btn--sm btn--ink', type: 'button', onclick: async () => { const names = inp.value.split(',').map((x) => x.trim()).filter(Boolean); await DT.data.setJoinClasses(names); T.joinInfo = { classNames: names }; T.classes = await DT.data.listClasses(); DT.toast(names.length ? '이제 학생은 「' + names.join(', ') + '」 중에서 골라 들어와요.' : '학년·반 번호로 들어오게 했어요.'); settings(); } }, '저장')));
+  }
   function joinToggle() {
     if (T.joinOpen === null || T.joinOpen === undefined) return null;
     return DT.el('div', { class: 'row', style: { gap: '8px', alignItems: 'center' } },
