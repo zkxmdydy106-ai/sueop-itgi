@@ -137,6 +137,7 @@
 
   async function enter() {
     try { S.tb = DT.render.flatten(await DT.data.getCourse()); } catch (e) { return err(e.message); }
+    S.edits = await DT.data.getEdits(C.courseId).catch(() => ({}));
     DT.applySubject(S.tb.meta.subject);
     S.unsub.forEach((f) => f()); S.unsub = [];
     S.unsub.push(DT.data.onAssignments(S.me.classId, (rows) => { S.assignments = rows.filter((a) => a.status !== 'hidden'); if (S.view === 'home') home(); }));
@@ -480,7 +481,7 @@
     function fit() { const k = Math.min(stage.clientWidth / 1640, stage.clientHeight / 860); inner.style.transform = 'translate(-50%,-50%) scale(' + k + ')'; }
     async function paint() {
       const s = S.tb._byId[ids[i]]; inner.innerHTML = '';
-      const page = DT.render.screen(s, { interactive: false, revealAll: true, solAll: true }); page.style.setProperty('--base', '34px'); inner.append(page); DT.render.fit(page);
+      const page = DT.render.screen(DT.render.applyEdits(s, S.edits && S.edits[s.id]), { interactive: false, revealAll: true, solAll: true }); page.style.setProperty('--base', '34px'); inner.append(page); DT.render.fit(page);
       const strokes = await DT.data.getInk(S.me.classId, 'screen:' + s.id).catch(() => null);
       if (surf) surf.destroy(); if (mineS) mineS.destroy();
       surf = new DT.ink.Surface(page, 1640 - 112, 860 - 80, { readOnly: true, load: () => strokes || [] });
@@ -551,6 +552,26 @@
       if (!keys.length) { sheet.append(DT.el('div', { class: 'fb fb--note' }, answered != null ? '보냈어요. 선생님 설명을 들으며 내 풀이와 비교해 봐요.' : '선생님이 풀이를 설명해요.')); document.body.append(sheet); return; }
       const ok = answered != null && keys.includes(DT.norm(answered));
       sheet.append(DT.el('div', { class: 'fb ' + (answered == null ? 'fb--note' : ok ? 'fb--ok' : 'fb--bad') }, answered == null ? '정답이 공개됐어요.' : ok ? '맞았어요!' : '다시 생각해 봐요. 선생님 설명을 들어 보세요.'), DT.el('button', { class: 'btn', type: 'button', onclick: () => { sheet.remove(); sheet = null; } }, '닫기'));
+    } else if (q.type === 'lab') {   /* 탐구 그림: 칠판과 같은 모형을 열고, 움직인 막대 값이 칠판에 모인다(이름 없이) */
+      sheet.classList.add('livesheet--lab');
+      const openLab = async () => {
+        const h = await DT.lab.open(q.lab, (() => { try { return JSON.parse(q.propsJson || '{}'); } catch (e) { return {}; } })(), { title: q.title });
+        if (!h || !h.sliders) return;
+        sheet.hidden = true;
+        const stat = DT.el('div', { class: 'labmission__stat' });
+        const setStat = (sent) => { stat.className = 'labmission__stat' + (sent ? ' is-sent' : ''); stat.innerHTML = sent ? DT.icon('check') + '<span>내 값이 칠판에 모였어요 · 이름은 안 보여요</span>' : '<i class="labmission__dot"></i><span>아래 막대를 움직여 보세요</span>'; };
+        h.panel.prepend(DT.el('section', { class: 'labmission', 'aria-live': 'polite' }, DT.el('span', { class: 'labmission__kick' }, '선생님 질문'), DT.el('p', { class: 'labmission__q', html: DT.md(q.text) }), stat));
+        setStat(false);
+        h.onChange((vals) => { DT.store.set('st.lq.lab.' + q.qid, vals); DT.data.sendLiveAnswer(S.me.classId, q.qid, S.me.key, vals).then(() => setStat(true)).catch((e) => DT.toast('값을 보내지 못했어요. (' + (e.code || e.message) + ')', 'bad')); });
+        const was = DT.store.get('st.lq.lab.' + q.qid, null);
+        if (Array.isArray(was)) was.forEach((v, i) => h.sliders[i] && h.sliders[i].put(v));
+        h.onClose(() => { if (sheet) sheet.hidden = false; });
+      };
+      sheet.append(DT.el('div', { class: 'fb fb--note' }, '모형의 막대를 움직이면 고른 값이 칠판에 모여요. 이름은 보이지 않아요.'),
+        DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('cube') + q.title + ' 열기', onclick: openLab }));
+      document.body.append(sheet);
+      if (DT.store.get('st.lq.labopen', '') !== q.qid) { DT.store.set('st.lq.labopen', q.qid); openLab(); }
+      return;
     } else if (answered != null) {
       sheet.append(DT.el('div', { class: 'fb fb--note' }, '보냈어요. 다른 친구들이 답하는 동안 기다려요.'), DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', onclick: () => { DT.store.del('st.lq.' + q.qid); sheetQ = null; onLive(); } }, '답 고치기'));
     } else if (q.type === 'ox') {

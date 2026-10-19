@@ -232,3 +232,28 @@
 .askdraws { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; max-height: 60vh; overflow-y: auto; }
 .askdraw { display: grid; gap: 4px; padding: 6px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--white); font-size: 16px; }
 .askdraw canvas, .drawthumb { width: 100%; height: auto; border-radius: 8px; background: #fff; }
+
+/* 화면에서 바로 고치기 */
+.page.is-editing .ed-target { outline: 3px dashed color-mix(in srgb, var(--ink) 25%, transparent); outline-offset: 6px; cursor: pointer; border-radius: 6px; transition: outline-color .15s; }
+.page.is-editing .ed-target:hover { outline-color: var(--ink-2); }
+.page.is-editing .ed-target.is-sel { outline: 4px solid var(--accent); outline-offset: 6px; }
+.page.is-editing .ed-hidden { opacity: .3; }
+.page.is-editing .ed-hidden::before { content: '숨김 — 학생·칠판에 안 보여요'; display: inline-block; margin-bottom: 6px; padding: 2px 12px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 18px; font-weight: 800; opacity: 1; }
+.edbar { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 22px; background: var(--white); border-radius: 999px; box-shadow: var(--lift); border: 2px solid var(--accent); white-space: nowrap; }
+.edbar__t { display: grid; margin-right: 10px; }
+.edbar__t b { font-size: 22px; color: var(--accent); }
+.edbar__t span { font-size: 15px; color: var(--ink-2); }
+.edtool { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 18px; padding: 12px 18px; background: var(--white); border-radius: 24px; box-shadow: var(--lift); max-width: calc(100% - 40px); }
+.edtool__empty { margin: 0; padding: 8px 12px; font-size: 20px; color: var(--ink-2); }
+.edtool__g { display: flex; align-items: center; gap: 8px; flex: none; }
+.edtool__g + .edtool__g { padding-left: 18px; border-left: 1px solid var(--line); }
+.edtool__l { font-size: 16px; font-weight: 800; color: var(--ink-2); margin-right: 2px; white-space: nowrap; }
+.edtool__v { min-width: 64px; text-align: center; font-family: var(--f-head); font-size: 26px; font-weight: 400; }
+.edbtn { display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; min-height: 56px; padding: 0 18px; border-radius: 16px; background: var(--paper-2); font-size: 19px; font-weight: 800; color: var(--ink); }
+.edbtn .ic { width: 24px; height: 24px; }
+.edbtn:disabled { opacity: .35; }
+.edbtn--ink { background: var(--ink); color: var(--paper); }
+.edbtn--ghost { background: none; }
+.edbtn--sw i { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line-2); }
+.edbtn--sw[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--ink); }
+body.is-editing-screen .inkbar, body.is-editing-screen .rail, body.is-editing-screen .dock { visibility: hidden; }

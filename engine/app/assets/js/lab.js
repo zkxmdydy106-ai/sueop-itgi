@@ -51,6 +51,9 @@
     setTimeout(() => hint.classList.add('is-out'), 4200);
 
     const disposers = []; let raf = 0; let alive = true;
+    /* 조절 막대 목록 — 학생과 같이 탐구할 때 값을 모으고, 칠판에서 학생 값으로 바꿔 넣는다 */
+    const sliders = []; const changeFns = [];
+    const changed = DT.debounce(() => changeFns.forEach((f) => f(sliders.map((s) => s.get()))), 350);
     const ctx = {
       root, view, panel, theme, props: props || {},
       onDispose: (fn) => disposers.push(fn),
@@ -62,10 +65,13 @@
         const inp = DT.el('input', { id, type: 'range', min: o.min, max: o.max, step: o.step || 1, value: o.value, 'aria-label': o.label });
         const fmt = o.format || ((x) => x + (o.unit || ''));
         const paint = () => { val.textContent = fmt(+inp.value); inp.style.setProperty('--p', ((inp.value - o.min) / (o.max - o.min) * 100) + '%'); };
-        inp.addEventListener('input', () => { paint(); o.onInput && o.onInput(+inp.value); });
+        inp.addEventListener('input', () => { paint(); o.onInput && o.onInput(+inp.value); changed(); });
         const w = DT.el('label', { class: 'lab__slider' }, DT.el('span', { class: 'lab__slabel' }, o.label, val), inp);
         (o.into || panel).append(w); paint();
-        return { el: w, set(v) { inp.value = v; paint(); }, get: () => +inp.value };
+        const api = { el: w, set(v) { inp.value = v; paint(); }, get: () => +inp.value };
+        sliders.push({ el: w, label: o.label, min: +o.min, max: +o.max, step: +(o.step || 1), fmt, get: api.get,
+          put(v) { inp.value = v; paint(); o.onInput && o.onInput(+inp.value); w.classList.remove('is-flash'); void w.offsetWidth; w.classList.add('is-flash'); } });
+        return api;
       },
       toggle(o) {
         const b = DT.el('button', { class: 'lab__toggle', type: 'button', 'aria-pressed': o.value ? 'true' : 'false' }, DT.el('span', { class: 'lab__tdot' }), o.label);
@@ -167,7 +173,12 @@
     function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); if (DT.ink.state.tool !== 'hand') DT.ink.set({ tool: 'hand' }); else close(); } else if (DT.ink.keys(e)) e.stopPropagation(); }
     document.addEventListener('keydown', onKey, true);
     closeBtn.onclick = close;
-    return { close, ctx };
+    const handle = { id, props: props || {}, opt, root, bar, panel, close, ctx, sliders,
+      values: () => sliders.map((s) => s.get()),
+      onChange: (fn) => changeFns.push(fn),
+      onClose: (fn) => disposers.push(fn) };
+    if (L.onOpen) { try { L.onOpen(handle); } catch (e) { console.error(e); } }
+    return handle;
   };
 
   /* 그래프 그리기 도우미(2D, SVG) — 모형 안의 작은 그래프에 쓴다 */

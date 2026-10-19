@@ -86,7 +86,7 @@
         const b = DT.el('button', { class: 'book__hot', type: 'button', title: h.label || '3D로 보기', style: { left: pct(h.x), top: pct(h.y), width: pct(h.w || 0), height: pct(h.h || 0) } },
           DT.el('span', { class: 'book__hotbtn', html: DT.icon(h.icon || 'cube') + '<b>' + DT.esc(h.label || '3D로 보기') + '</b>' }));
         b.addEventListener('pointerdown', (e) => e.stopPropagation());
-        b.addEventListener('click', (e) => { e.stopPropagation(); if (h.lab && DT.lab) DT.lab.open(h.lab, h.props || {}, { title: h.title, fig: h.fig, theme: h.theme }); else if (h.screen && opt.onScreen) { done(); opt.onScreen(h.screen); } });
+        b.addEventListener('click', (e) => { e.stopPropagation(); if (h.lab && DT.lab) DT.lab.open(h.lab, h.props || {}, { title: h.title, fig: h.fig, theme: h.theme, ask: h.ask }); else if (h.screen && opt.onScreen) { done(); opt.onScreen(h.screen); } });
         el.append(b);
       });
       /* 선생님 메모 */

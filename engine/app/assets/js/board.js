@@ -65,6 +65,7 @@
 
   /* ── 시작 ── */
   async function start() {
+    if (DT.lab) DT.lab.onOpen = labHook;
     fitStage(); addEventListener('resize', fitStage);
     paintStatic();
     try { await DT.data.init(); } catch (e) { return fatal('기록 저장소에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 열어 주세요. (' + e.message + ')'); }
@@ -77,6 +78,7 @@
     if (DT.data.mode === 'firebase' && (!me || me.role !== 'teacher')) return askLogin(me);
     if ((DT.data.mode === 'demo' || DT.data.mode === 'local') && !me) { me = { role: 'teacher', key: 'teacher', name: '선생님' }; await DT.data.signIn(me); }
     try { S.tb = DT.render.flatten(await DT.data.getCourse()); } catch (e) { return fatal(e.message); }
+    S.edits = await DT.data.getEdits(C.courseId).catch(() => ({}));
     DT.applySubject(S.tb.meta.subject);
     if (S.tb.meta.subject === '영어') { const rb = DT.el('button', { class: 'topbar__class', id: 'btnRead', type: 'button', title: '이 화면 읽어 주기' }); rb.onclick = readAloud; $('#btnClass').before(rb); paintRead(); }
     document.title = '수업 · ' + DT.plain(S.tb.meta.title);
@@ -187,7 +189,7 @@
     if (speaking) { speechSynthesis.cancel(); speaking = false; paintRead(); }
     if (DT.gloss) DT.gloss.close();
     const sheet = $('#sheet'); sheet.innerHTML = '';
-    const page = DT.render.screen(s, { interactive: true, onQuestion: openFocus });
+    const page = DT.render.screen(DT.render.applyEdits(s, S.edits && S.edits[s.id]), { interactive: true, onQuestion: openFocus });
     page.style.setProperty('--base', '34px');
     if (dir) page.classList.add(dir > 0 ? 'is-enter' : 'is-enter-back');
     sheet.append(page);
@@ -459,6 +461,7 @@
     item('timer', '타이머', '1·3·5분, 화면 위에 작게', openTimer);
     item('board', '빈 칠판', '흰 바탕 · 모눈 · 초록 칠판', openBlank);
     if (!NS) { item('note', '수업 마치기', '오늘 진도와 반응을 일지로 저장', needClass(endLesson)); item('qr', '학생 접속 QR', '아이패드로 찍기 · 클래스룸에 올리기', studentQR); }
+    item('pencil', '화면 고치기', '글자 크기·형광·순서·숨기기·선생님 메모', () => openEdit());
     item('palette', '화면 테마', '밝은 색 7가지 중 고르기', () => DT.theme.open());
     item('question', '사용 안내', '처음 안내와 단축키 다시 보기', coach);
     const close = () => { m.remove(); $('#btnTools').setAttribute('aria-expanded', 'false'); popEsc(); };
@@ -624,7 +627,194 @@
       await DT.data.sendLiveAnswer(S.classId, q.qid, r.key, v); await DT.sleep(60 + Math.random() * 120);
     }
   }
+  /* ── 화면에서 바로 고치기 ──
+     교과서 content는 그대로 두고, 이 화면에 덧씌울 것(글자 크기·형광·순서·숨기기·선생님 메모·오타)만 서버에 저장한다.
+     저장하면 칠판·학생 아이패드·다른 기기에 똑같이 보인다. */
+  const ED_HL = [['', '없음', 'transparent'], ['yellow', '노랑', '#FFF0A0'], ['pink', '분홍', '#FFD3E2'], ['sky', '하늘', '#CFEBFF']];
+  const ED_TEXT = ['p', 'h', 'def', 'note'];
+  function edStrip(x) {   /* [[핵심어]]·**굵게** 같은 표시는 숨기고 글만 — 저장할 때 같은 말에 다시 붙인다 */
+    const marks = [];
+    const t = String(x || '').replace(/\[\[([^\]]+)\]\]|\*\*([^*]+)\*\*|==([^=]+)==|__([^_]+)__/g, (m, a, b, c, d) => { const inner = a || b || c || d; marks.push([m.split(inner).join('\u0001'), inner]); return inner; });
+    return { t, marks };
+  }
+  function edUnstrip(t, marks) {
+    let out = t; let from = 0;
+    marks.forEach(([wrap, inner]) => { const i = out.indexOf(inner, from); if (i < 0) return; const w = wrap.split('\u0001').join(inner); out = out.slice(0, i) + w + out.slice(i + inner.length); from = i + w.length; });
+    return out;
+  }
+  function openEdit() {
+    if ($('.edbar')) return;
+    const s = screens()[S.idx];
+    const blank = () => ({ order: [], hide: [], scale: {}, hl: {}, text: {}, notes: [] });
+    let e = Object.assign(blank(), JSON.parse(JSON.stringify(S.edits[s.id] || {})));
+    let sel = null; let dirty = false;
+    DT.ink.set({ tool: 'hand' });
+    if (S.surface) { S.surface.destroy(); S.surface = null; }
+    const sheet = $('#sheet');
+    const memo = DT.el('button', { class: 'edbtn', type: 'button', html: DT.icon('plus') + '선생님 메모 더하기' });
+    const reset = DT.el('button', { class: 'edbtn edbtn--ghost', type: 'button', html: DT.icon('reset') + '처음대로' });
+    const cancel = DT.el('button', { class: 'edbtn edbtn--ghost', type: 'button' }, '취소');
+    const save = DT.el('button', { class: 'edbtn edbtn--ink', type: 'button', html: DT.icon('check') + '저장하기' });
+    const bar = DT.el('div', { class: 'edbar', role: 'toolbar', 'aria-label': '화면 고치기' },
+      DT.el('div', { class: 'edbar__t' }, DT.el('b', null, '화면 고치는 중'), DT.el('span', null, '고칠 상자를 누르세요 · 교과서 글은 그대로 남아요')), memo, reset, cancel, save);
+    const tool = DT.el('div', { class: 'edtool', role: 'toolbar', 'aria-label': '고른 상자' });
+    $('#layer').append(bar, tool);
+    document.body.classList.add('is-editing-screen');
+    const cur = () => DT.render.applyEdits(s, e);
+    const ids = () => cur().blocks.map((b) => b.id);   /* 자리 옮기기는 맨 바깥 상자끼리 */
+    const all = () => { const out = []; cur().blocks.forEach((b) => { out.push(b); (b.cols || []).forEach((c) => c.forEach((x) => out.push(x))); }); return out; };
+    const blockOf = (id) => all().find((b) => b.id === id);
+    const touch = () => { dirty = true; paint(); };
+    function paint() {
+      sheet.innerHTML = '';
+      const page = DT.render.screen(cur(), { interactive: false, editing: true, revealAll: true });
+      page.style.setProperty('--base', '34px'); page.classList.add('is-editing');
+      sheet.append(page); DT.render.fit(page);
+      const known = all().map((b) => b.id);
+      DT.$$('[data-block]', page).forEach((n) => {
+        if (!known.includes(n.dataset.block) || n.classList.contains('b-cols')) return;   /* 두 단 묶음은 안의 상자를 고른다 */
+        n.classList.add('ed-target'); if (n.dataset.block === sel) n.classList.add('is-sel');
+      });
+      page.addEventListener('click', (ev) => { const n = ev.target.closest('.ed-target'); if (!n) return; ev.preventDefault(); ev.stopPropagation(); sel = n.dataset.block; paint(); }, true);
+      paintTool();
+    }
+    function paintTool() {
+      tool.innerHTML = '';
+      const b = sel && blockOf(sel);
+      if (!b) { tool.append(DT.el('p', { class: 'edtool__empty' }, '화면에서 고칠 상자(문단·그림·문제…)를 누르면 여기에 고치는 단추가 나와요.')); return; }
+      const k = e.scale[b.id] || 1; const hidden = e.hide.includes(b.id); const top = ids(); const owner = top.includes(b.id) ? b.id : (top.find((t) => b.id.startsWith(t + '.')) || b.id); const pos = top.indexOf(owner); const n = top.length;
+      const btn = (html, fn, o) => { const x = DT.el('button', Object.assign({ class: 'edbtn', type: 'button', html }, o || {})); x.onclick = fn; return x; };
+      const sizeG = DT.el('div', { class: 'edtool__g' }, DT.el('span', { class: 'edtool__l' }, '글자·그림 크기'),
+        btn(DT.icon('minus'), () => { e.scale[b.id] = Math.max(0.7, Math.round((k - 0.1) * 10) / 10); touch(); }, { 'aria-label': '작게', disabled: k <= 0.7 }),
+        DT.el('b', { class: 'edtool__v num' }, Math.round(k * 100) + '%'),
+        btn(DT.icon('plus'), () => { e.scale[b.id] = Math.min(1.6, Math.round((k + 0.1) * 10) / 10); touch(); }, { 'aria-label': '크게', disabled: k >= 1.6 }));
+      const hlG = DT.el('div', { class: 'edtool__g' }, DT.el('span', { class: 'edtool__l' }, '형광'),
+        ...ED_HL.map(([v, t, c]) => { const x = btn('<i style="background:' + c + '"></i>' + t, () => { if (v) e.hl[b.id] = v; else delete e.hl[b.id]; touch(); }, { 'aria-pressed': (e.hl[b.id] || '') === v ? 'true' : 'false' }); x.classList.add('edbtn--sw'); return x; }));
+      const move = (d) => { const o = ids(); const i = o.indexOf(owner); const j = i + d; if (j < 0 || j >= o.length) return; [o[i], o[j]] = [o[j], o[i]]; e.order = o; touch(); };
+      const posG = DT.el('div', { class: 'edtool__g' }, DT.el('span', { class: 'edtool__l' }, '자리'),
+        btn(DT.icon('up') + '위로', () => move(-1), { disabled: pos <= 0 }), btn(DT.icon('down') + '아래로', () => move(1), { disabled: pos >= n - 1 }),
+        b._mine ? btn(DT.icon('trash') + '메모 지우기', () => { e.notes = e.notes.filter((x) => x.id !== b.id); sel = null; touch(); })
+          : btn(DT.icon(hidden ? 'eye' : 'x') + (hidden ? '다시 보이기' : '숨기기'), () => { e.hide = hidden ? e.hide.filter((x) => x !== b.id) : e.hide.concat([b.id]); touch(); }));
+      tool.append(sizeG, hlG, posG);
+      if (b._mine || ED_TEXT.includes(b.t)) tool.append(DT.el('div', { class: 'edtool__g' }, btn(DT.icon('pencil') + (b._mine ? '메모 고치기' : '오타 고치기'), () => editText(b))));
+    }
+    function editText(b) {
+      const orig = b._mine ? b.x : (e.text[b.id] != null ? e.text[b.id] : b.x);
+      const st = b._mine ? { t: orig, marks: [] } : edStrip(orig);
+      const ed = DT.ws.richEditor(b._mine ? '선생님 메모를 적어 주세요' : '', st.t);
+      const body = DT.el('div', { style: { display: 'grid', gap: '12px' } });
+      if (!b._mine) body.append(DT.el('div', { class: 'fb fb--note' }, '교과서 글은 원래 그대로가 좋아요. 옮기다 생긴 오타를 바로잡을 때만 고쳐 주세요. (교과서 원본 파일은 바뀌지 않아요)'));
+      body.append(ed.el);
+      DT.modal({ title: b._mine ? '선생님 메모' : '오타 고치기', wide: true, body, actions: [
+        ...(b._mine || e.text[b.id] == null ? [] : [{ label: '교과서 글로 되돌리기', onClick: (c) => { delete e.text[b.id]; c(); touch(); } }]),
+        { label: '취소' },
+        { label: '넣기', kind: 'ink', onClick: (c) => { const v = ed.get().trim(); if (!v) return DT.toast('글을 적어 주세요.', 'bad'); if (b._mine) { const m = e.notes.find((x) => x.id === b.id); if (m) m.x = v; } else e.text[b.id] = edUnstrip(v, st.marks); c(); touch(); } }] });
+    }
+    memo.onclick = () => {
+      const ed = DT.ws.richEditor('이 화면에 덧붙일 말 (발문·주의할 점·예시). 학생 화면에도 「선생님 메모」로 보여요.', '');
+      DT.modal({ title: '선생님 메모 더하기', wide: true, body: ed.el, actions: [{ label: '취소' }, { label: '넣기', kind: 'ink', onClick: (c) => { const v = ed.get().trim(); if (!v) return DT.toast('메모를 적어 주세요.', 'bad'); const id = 'memo-' + DT.uid('m'); e.notes.push({ id, x: v }); sel = id; c(); touch(); } }] });
+    };
+    reset.onclick = async () => { if (!(await DT.confirm('처음대로', '이 화면에서 고친 것(크기·형광·순서·숨기기·메모·오타)을 모두 없애고 교과서 그대로 돌릴까요?', '처음대로'))) return; e = blank(); sel = null; touch(); };
+    function close() { bar.remove(); tool.remove(); document.body.classList.remove('is-editing-screen'); popEsc(); go(S.idx); }
+    cancel.onclick = async () => { if (dirty && !(await DT.confirm('고친 것 버리기', '저장하지 않은 것은 사라져요. 그만 고칠까요?', '그만 고치기'))) return; close(); };
+    save.onclick = async () => {
+      const clean = { order: e.order, hide: e.hide, scale: e.scale, hl: e.hl, text: e.text, notes: e.notes };
+      try { await DT.data.saveEdit(C.courseId, s.id, clean); }
+      catch (err) { return DT.toast('저장하지 못했어요. 칠판을 휴대폰 QR(선생님 계정)로 다시 열어 주세요. (' + (err.code || err.message || err) + ')', 'bad'); }
+      S.edits[s.id] = clean; DT.toast('저장했어요. 학생 화면에도 똑같이 보여요.'); close();
+    };
+    pushEsc(() => cancel.onclick());
+    paint();
+  }
+
   function $$remove(sel) { DT.$$(sel).forEach((x) => x.remove()); }
+
+  /* ── 탐구 그림 같이 하기 ──
+     칠판에서 연 모형(조절 막대가 있는 것)을 학생 아이패드에도 똑같이 열고,
+     학생이 움직인 막대 값을 막대그래프로 모은다. 막대를 누르면 그 값이 칠판 모형에 들어간다(이름은 안 보임). */
+  function labHook(h) {
+    if (C.noStudents || !h.sliders.length) return;
+    const btn = DT.el('button', { class: 'lab__btn lab__btn--live', type: 'button', html: DT.icon('users') + '<span>학생과 같이</span>', title: '학생 아이패드에도 이 모형을 열고, 학생들이 고른 값을 모아 봐요' });
+    btn.onclick = () => (S.classId ? labLive(h, btn) : DT.data.mode === 'local' ? linkInfo() : pickClass(false));
+    h.bar.insertBefore(btn, h.bar.lastElementChild);
+  }
+  async function labLive(h, btn) {
+    const old = h.root.querySelector('.lablive'); if (old && !old.classList.contains('is-done')) return; if (old) old.remove();
+    const title = h.opt.title && h.opt.title !== '3D로 돌려 보기' ? h.opt.title : (DT.lab.reg[h.id] || {}).title || '탐구 그림';
+    const q = { type: 'lab', lab: h.id, propsJson: JSON.stringify(h.props || {}), title: DT.plain(title), text: h.opt.ask || '모형의 막대를 움직이며 탐구해 보세요. 고른 값이 칠판에 모여요.',
+      labels: h.sliders.map((s) => DT.plain(s.label)), qid: DT.uid('lq'), open: true, reveal: false, at: Date.now(), screenId: screens()[S.idx].id, label: '탐구 그림' };
+    try { await DT.data.setLive(S.classId, { question: JSON.parse(JSON.stringify(q)) }); }
+    catch (e) { return DT.toast('학생에게 보내지 못했어요. 칠판을 휴대폰 QR로 다시 열어 주세요. (' + (e.code || e.message || e) + ')', 'bad'); }
+    btn.setAttribute('aria-pressed', 'true');
+    const mine = h.values();
+    const vis = () => h.sliders.map((s, i) => (s.el.offsetParent || s.el.getClientRects().length ? i : -1)).filter((i) => i >= 0);
+    let shown = vis(); if (!shown.length) shown = h.sliders.map((s, i) => i);
+    const box = DT.el('aside', { class: 'lablive', 'aria-label': '학생 값' });
+    const count = DT.el('div', { class: 'lablive__count num' });
+    const list = DT.el('div', { class: 'lablive__list' });
+    const back = DT.el('button', { class: 'lab__action', type: 'button', html: DT.icon('reset') + '선생님 값으로' });
+    const stop = DT.el('button', { class: 'lab__action lab__action--ink', type: 'button', html: DT.icon('check') + '모으기 끝내기' });
+    const foot = DT.el('div', { class: 'lablive__foot' }, back, stop);
+    const demoB = DT.data.mode === 'demo' ? DT.el('button', { class: 'lablive__demo', type: 'button', onclick: () => demoLab() }, '체험용: 가상 학생 값 넣기') : null;
+    btn.innerHTML = '<i class="lab__livedot"></i><span>모으는 중</span>';
+    box.append(DT.el('div', { class: 'lablive__head' }, DT.el('span', { class: 'lablive__live' }, DT.el('i'), '학생 값 모으는 중'), count), DT.el('p', { class: 'lablive__q', html: DT.md(q.text) }), list, foot, demoB || '');
+    h.root.append(box); h.root.classList.add('has-live');   /* 모형을 오른쪽으로 비켜 서랍이 가리지 않게 */
+    let rows = []; let off = null;
+    const fmtOf = (s) => (v) => { try { return s.fmt(v) || String(v); } catch (e) { return String(v); } };
+    function groupsOf(i) {
+      const s = h.sliders[i]; const vals = rows.map((r) => Array.isArray(r.value) ? +r.value[i] : NaN).filter((v) => isFinite(v));
+      const m = new Map(); vals.forEach((v) => m.set(v, (m.get(v) || 0) + 1));
+      let g = [...m.entries()].sort((a, b) => a[0] - b[0]).map(([v, n]) => ({ v, n, label: fmtOf(s)(v) }));
+      if (g.length > 9) {   /* 값이 많으면 구간으로 묶는다 — 누르면 그 구간에서 가장 많이 고른 값 */
+        const lo = Math.min(...vals), hi = Math.max(...vals), w = (hi - lo) / 8 || 1; const bins = Array.from({ length: 8 }, (_, k) => ({ a: lo + k * w, b: lo + (k + 1) * w, n: 0, best: null, bn: 0, m: new Map() }));
+        vals.forEach((v) => { const b = bins[Math.min(7, Math.floor((v - lo) / w))]; b.n++; b.m.set(v, (b.m.get(v) || 0) + 1); if (b.m.get(v) > b.bn) { b.bn = b.m.get(v); b.best = v; } });
+        g = bins.filter((b) => b.n).map((b) => ({ v: b.best, n: b.n, label: fmtOf(s)(+b.a.toFixed(2)) + ' ~ ' + fmtOf(s)(+b.b.toFixed(2)) }));
+      }
+      return { g, n: vals.length };
+    }
+    function paint() {
+      count.innerHTML = '<small>보낸 학생</small> <b>' + rows.length + '</b><span>/ ' + (S.roster.length || 0) + '명</span>';
+      list.innerHTML = '';
+      h.sliders.forEach((s, i) => {
+        if (!shown.includes(i)) return;   /* 지금 모드에서 보이는 막대만 */
+        const { g } = groupsOf(i); const now = s.get(); const max = Math.max(1, ...g.map((x) => x.n));
+        const topN = g.length ? Math.max(...g.map((x) => x.n)) : 0; const tops = g.filter((x) => x.n === topN); const top = tops[0] || null;
+        /* 단위는 머리 줄에 한 번만: 막대 아래는 숫자만 크게 */
+        const unitM = g.length ? String(g[0].label).match(/[^\d.\-−~\s][^\d]*$/) : null; const unit = unitM && g.every((x) => String(x.label).endsWith(unitM[0])) ? unitM[0].trim() : '';
+        const short = (x) => (unit ? String(x.label).split(unit).join('').replace(/\s+/g, ' ').trim() : x.label);
+        const sec = DT.el('section', { class: 'lablive__sl' },
+          DT.el('header', { class: 'lablive__slh' }, DT.el('b', null, DT.plain(s.label), unit ? DT.el('small', null, ' (' + unit + ')') : ''), top ? DT.el('span', null, '가장 많이 ', DT.el('em', { class: 'num' }, tops.slice(0, 3).map(short).join(' · ') + (tops.length > 1 ? ' (같은 수)' : ''))) : ''));
+        if (!g.length) { sec.append(DT.el('p', { class: 'lablive__empty' }, '학생들이 막대를 움직이면 여기에 모여요')); list.append(sec); return; }
+        const cols = DT.el('div', { class: 'lablive__cols', style: { '--n': g.length } });
+        g.forEach((x) => {
+          const c = DT.el('button', { class: 'lablive__col' + (tops.includes(x) ? ' is-top' : '') + (x.v === now ? ' is-now' : ''), type: 'button', title: '칠판 모형에 ' + x.label + ' 넣기', 'aria-label': x.label + ' ' + x.n + '명 — 칠판 모형에 넣기' },
+            DT.el('span', { class: 'lablive__n num' }, String(x.n)),
+            DT.el('span', { class: 'lablive__bar2' }, DT.el('span', { class: 'lablive__fill2', style: { height: Math.max(6, x.n / max * 100) + '%' } })),
+            DT.el('span', { class: 'lablive__v num' }, short(x)));
+          c.onclick = () => { s.put(x.v); paint(); };
+          cols.append(c);
+        });
+        sec.append(cols, DT.el('p', { class: 'lablive__tip' }, '막대를 누르면 그 값이 칠판 모형에 들어가요 · 검은 꼬리표 = 지금 칠판 값')); list.append(sec);
+      });
+    }
+    back.onclick = () => { h.sliders.forEach((s, i) => s.put(mine[i])); paint(); };
+    async function finish() {
+      if (off) { off(); off = null; }
+      if (q.open) { q.open = false; try { await DT.data.setLive(S.classId, { question: q }); } catch (e) {} }
+      if (S.lesson) { S.lesson.live = S.lesson.live.filter((x) => x.qid !== q.qid).concat([{ qid: q.qid, text: ('탐구 그림 · ' + q.title).slice(0, 80), label: '탐구 그림', screenId: q.screenId, n: rows.length, ok: null }]); DT.store.set('board.lesson.' + C.courseId + '.' + S.classId, S.lesson); }
+    }
+    stop.onclick = async () => { await finish(); stop.disabled = true; stop.innerHTML = DT.icon('check') + '모으기 끝'; box.classList.add('is-done'); box.querySelector('.lablive__live').lastChild.textContent = '모으기 끝'; btn.innerHTML = DT.icon('users') + '<span>학생과 같이</span>'; btn.setAttribute('aria-pressed', 'false'); };
+    async function demoLab() {
+      for (const r of S.roster.slice(0, Math.max(3, S.roster.length - 2))) {
+        const v = h.sliders.map((s, i) => { const k = Math.round((s.max - s.min) / s.step); const c = Math.round((mine[i] - s.min) / s.step); const j = Math.max(0, Math.min(k, c + Math.round((Math.random() - 0.3) * Math.min(4, k)))); return +(s.min + j * s.step).toFixed(4); });
+        await DT.data.sendLiveAnswer(S.classId, q.qid, r.key, v);
+      }
+    }
+    off = DT.data.onLiveAnswers(S.classId, q.qid, (r) => { rows = r; paint(); });
+    h.onChange(() => { const v = vis(); if (v.length) shown = v; paint(); });
+    h.onClose(() => { finish(); });
+    paint();
+  }
 
   /* ── 이해도 신호 · 질문함 ── */
   function screenSignals(id) { const c = { g: 0, y: 0, r: 0 }; S.signals.filter((x) => x.screenId === id && Date.now() - x.at < 3 * 3600 * 1000).forEach((x) => (c[x.level] = (c[x.level] || 0) + 1)); return c; }

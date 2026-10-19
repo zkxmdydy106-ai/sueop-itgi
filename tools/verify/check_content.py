@@ -147,6 +147,8 @@ def main():
                 F.append('%s: 모형 %r이 없음 (assets/js/labs/에 만들고 html에 script 추가)' % (where, b.get('lab')))
             if not b.get('theme'):
                 W.append('%s: 모형 theme 없음 → 교과서 그림 색(figure_palette.py)을 넣을 것' % where)
+            if not b.get('ask'):
+                W.append('%s: 탐구 질문(ask) 없음 → 「학생과 같이」 때 학생 화면에 뜰 질문 한 줄 (예: "배가 똑바로 건너려면 뱃머리를 어느 쪽으로?")' % where)
         if t == 'cols':
             cols = b.get('cols') or []
             if not cols: F.append('%s: cols 비었음' % where)
@@ -218,6 +220,8 @@ def main():
                 chars += len(re.sub(r'<[^>]+>', '', json.dumps({k: v for k, v in b.items() if k not in ('svg', 'theme', 'props')}, ensure_ascii=False)))
             if chars > 2600: W.append('%s: 글이 많음(%d자) → audit_app.py로 넘침 확인, 넘치면 화면 나누기' % (sid, chars))
         if 'problem' not in kinds: W.append('%s: 문제 화면(kind=problem)이 없음' % uid)
+        if '"t": "lab"' not in json.dumps(screens, ensure_ascii=False) and '"lab":' not in json.dumps(u.get('hotspots') or [], ensure_ascii=False):
+            W.append('%s: 탐구 그림(lab) 없음 → 조절 막대로 움직여 보는 모형을 하나 이상 (입체·공간이면 3D). 칠판 「학생과 같이」로 학생 값을 모을 수 있어요 — lab-3d 스킬 §탐구 그림' % uid)
         for i, p in enumerate(u.get('practice') or []):
             if p.get('key') in (None, ''): F.append('%s.practice[%d]: key 없음' % (uid, i))
             if p.get('screen') and p['screen'] not in [x.get('id') for x in screens]: F.append('%s.practice[%d]: screen %s 없음' % (uid, i, p['screen']))

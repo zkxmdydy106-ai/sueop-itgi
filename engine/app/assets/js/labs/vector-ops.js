@@ -75,9 +75,11 @@
         labels.length = 0;
         const o = O(); const a = st.a, b = st.b;
         let g = '<rect width="' + W + '" height="' + H + '" fill="' + C.paper + '"/>';
+        if (mode !== 'river') {
         for (let i = 0; i <= COLS; i++) g += '<line x1="' + i * s + '" y1="0" x2="' + i * s + '" y2="' + H + '" stroke="' + C.grid + '" stroke-width="1.25"/>';
         for (let j = 0; j <= ROWS; j++) g += '<line x1="0" y1="' + j * s + '" x2="' + W + '" y2="' + j * s + '" stroke="' + C.grid + '" stroke-width="1.25"/>';
         g += '<rect width="' + W + '" height="' + H + '" fill="none" stroke="#B9B5AC" stroke-width="1.5"/>';
+        }
         let handles = [];
         if (mode === 'add') {
           const A = o, B = add(o, a), Cc = add(B, b);
@@ -214,26 +216,87 @@
           readA.set(nrm ? '$\\vec n=(' + v[0] + ',\\ ' + v[1] + ')$' : '$\\vec u=(' + v[0] + ',\\ ' + v[1] + ')$');
           readR.set(eq);
         } else if (mode === 'river') {
-          /* 배: 북쪽 20 km/h(모눈 4칸), 강물: 동쪽 v km/h (5 km/h = 1칸) */
-          const boat = [0, 4], water = [st.v / 5, 0], P0 = [o[0], o[1]];
-          g += '<rect x="0" y="' + Y(9.4) + '" width="' + W + '" height="' + (Y(1) - Y(9.4)) + '" fill="#BFE6F2" opacity="0.55"/>';
-          g += '<rect x="0" y="' + Y(1) + '" width="' + W + '" height="' + (H - Y(1)) + '" fill="#9C9EA1" opacity="0.55"/><rect x="0" y="0" width="' + W + '" height="' + Y(9.4) + '" fill="#9C9EA1" opacity="0.55"/>';
+          /* 축척을 하나로: 강 너비 20 km. 배는 북쪽 20 km/h → 꼭 1시간에 건넌다.
+             그래서 '1시간 동안 간 거리' 화살표 = 속도 벡터. 북쪽 화살표(20 km/h)는 건너편 강둑에 닿고,
+             동쪽 화살표(강물 v km/h)는 강둑을 따라 v km, 합 벡터 끝이 실제 도착 지점 Q. */
+          const WIDTH = 20, BOAT = 20, y0 = 1.7, y1 = 9.5, KM = (y1 - y0) / WIDTH, px = 2.6;
+          const hours = WIDTH / BOAT, drift = st.v * hours;
+          const P0 = [px, y0], N = [px, y1], Q = [px + drift * KM, y1];
+          const sx = (x) => X(x).toFixed(1), sy = (y) => Y(y).toFixed(1);
+          let d = '<defs>'
+            + '<linearGradient id="rvW" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4FC0E0"/><stop offset=".5" stop-color="#5CC8E6"/><stop offset="1" stop-color="#3FB2D6"/></linearGradient>'
+            + '<filter id="rvGrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .22"/></feComponentTransfer><feComposite in2="SourceGraphic" operator="in"/></filter>'
+            + '<filter id="rvWater" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".012 .09" numOctaves="3" seed="9"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 -.18"/><feComposite in2="SourceGraphic" operator="in"/></filter>'
+            + '<linearGradient id="rvHull" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A8321F"/><stop offset=".5" stop-color="#D2492F"/><stop offset="1" stop-color="#9B2C1B"/></linearGradient>'
+            + '<linearGradient id="rvDeck" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#B9773F"/><stop offset=".5" stop-color="#D99A5B"/><stop offset="1" stop-color="#B26F38"/></linearGradient>'
+            + '<filter id="rvShadow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="' + (s * 0.08).toFixed(1) + '"/></filter>'
+            + '</defs>';
+          g += d;
+          /* 강물 + 물결 */
+          g += '<rect x="0" y="' + sy(y1) + '" width="' + W + '" height="' + (Y(y0) - Y(y1)).toFixed(1) + '" fill="url(#rvW)"/>';
+          g += '<rect x="0" y="' + sy(y1) + '" width="' + W + '" height="' + (Y(y0) - Y(y1)).toFixed(1) + '" fill="#fff" filter="url(#rvWater)" opacity=".9"/>';
+          const shift = ((riverT * st.v * 0.09) % 1) * 1.6;
+          for (let k = 0; k < 46; k++) {
+            const wx = ((k * 3.71) % (COLS + 2)) - 1 + shift, wy = y0 + 0.35 + ((k * 2.39) % (y1 - y0 - 0.7)), wl = 0.6 + (k % 4) * 0.22;
+            const light = k % 3 !== 0;
+            g += '<path d="M' + sx(wx) + ' ' + sy(wy) + ' q' + (wl * s / 2).toFixed(1) + ' ' + (-s * 0.09).toFixed(1) + ' ' + (wl * s).toFixed(1) + ' 0" fill="none" stroke="' + (light ? '#FFFFFF' : '#1D88B3') + '" stroke-opacity="' + (light ? '.75' : '.35') + '" stroke-width="' + Math.max(1.6, s * (light ? 0.06 : 0.05)).toFixed(1) + '" stroke-linecap="round"/>';
+          }
+          /* 강둑: 콘크리트 + 물가 그늘 */
+          const bank = (yA, yB) => '<rect x="0" y="' + sy(yB) + '" width="' + W + '" height="' + (Y(yA) - Y(yB)).toFixed(1) + '" fill="#B7B8BA"/><rect x="0" y="' + sy(yB) + '" width="' + W + '" height="' + (Y(yA) - Y(yB)).toFixed(1) + '" fill="#000" filter="url(#rvGrain)"/>';
+          g += bank(0, y0) + bank(y1, ROWS);
+          g += '<rect x="0" y="' + sy(y0 + 0.02) + '" width="' + W + '" height="' + (s * 0.14).toFixed(1) + '" fill="#5E6266" opacity=".75"/><rect x="0" y="' + (Y(y1) - s * 0.14).toFixed(1) + '" width="' + W + '" height="' + (s * 0.14).toFixed(1) + '" fill="#5E6266" opacity=".75"/>';
+          /* 강 너비 치수선 (왼쪽) */
+          const dx = 0.42;
+          g += '<line x1="' + sx(dx) + '" y1="' + sy(y0 + 0.08) + '" x2="' + sx(dx) + '" y2="' + sy(y1 - 0.08) + '" stroke="' + C.ink + '" stroke-width="2"/>'
+            + '<path d="M' + sx(dx) + ' ' + sy(y1 - 0.08) + 'l-6 11h12z M' + sx(dx) + ' ' + sy(y0 + 0.08) + 'l-6 -11h12z" fill="' + C.ink + '"/>';
+          labels.push({ at: [dx + 0.05, (y0 + y1) / 2], tex: '강 너비 20 km', color: C.ink, plain: true, cls: 'is-dim' });
+          /* 거리 눈금 (북쪽 강둑, P의 바로 맞은편에서 동쪽으로) */
+          for (let km = 0; px + km * KM <= COLS - 0.2; km += 5) {
+            const tx = px + km * KM;
+            g += '<line x1="' + sx(tx) + '" y1="' + sy(y1 + 0.08) + '" x2="' + sx(tx) + '" y2="' + sy(y1 + (km % 10 ? 0.28 : 0.42)) + '" stroke="' + C.ink + '" stroke-width="2"/>';
+            labels.push({ at: [tx, y1 + 0.78], tex: km + (km ? ' km' : ''), color: C.ink, plain: true, cls: 'is-km' });
+          }
+          g += '<line x1="' + sx(px) + '" y1="' + sy(y1 + 0.08) + '" x2="' + sx(Math.min(COLS - 0.2, px + 30 * KM)) + '" y2="' + sy(y1 + 0.08) + '" stroke="' + C.ink + '" stroke-width="2"/>';
+          /* 1시간 동안의 벡터 삼각형 */
+          g += arrow(P0, N, C.ink) + (st.v > 0 ? arrow(N, Q, C.ink) : '') + arrow(P0, Q, C.res, { w: Math.max(3.4, s * 0.1) });
+          tag(P0, N, '20 km/h', C.ink, -1);
+          if (st.v > 0) labels.push({ at: [(N[0] + Q[0]) / 2, y1 - 0.55], tex: st.v + ' km/h', color: C.ink });
+          /* 도착 지점 Q */
+          g += '<circle cx="' + sx(Q[0]) + '" cy="' + sy(Q[1]) + '" r="' + Math.max(6, s * 0.16).toFixed(1) + '" fill="#fff" stroke="' + C.res + '" stroke-width="3"/>';
+          ptag(Q, 'Q', 0.62, -0.5);
+          /* 배: 위에서 본 모습. 뱃머리는 늘 북쪽, 실제로는 합 벡터 방향으로 미끄러진다 */
           const t = Math.min(1, riverT);
-          const end = add(P0, mul(8.4 / 4, add(boat, water)));
-          g += dashed(P0, end, C.res);
-          g += arrow(P0, add(P0, boat), C.ink) + arrow(add(P0, boat), add(add(P0, boat), water), C.ink) + arrow(P0, add(P0, add(boat, water)), C.res);
-          tag(P0, add(P0, boat), '20 km/h', C.ink, 1); if (st.v > 0) tag(add(P0, boat), add(add(P0, boat), water), st.v + ' km/h', C.ink, -1);
-          const cur = add(P0, mul(t * 8.4 / 4, add(boat, water)));
-          g += '<g transform="translate(' + X(cur[0]) + ' ' + Y(cur[1]) + ')"><ellipse rx="' + s * 0.28 + '" ry="' + s * 0.55 + '" fill="#8B5A3C" stroke="' + C.ink + '" stroke-width="2"/><rect x="' + (-s * 0.14) + '" y="' + (-s * 0.25) + '" width="' + s * 0.28 + '" height="' + s * 0.4 + '" fill="#F4EFE4" stroke="' + C.ink + '" stroke-width="1.2"/></g>';
-          ptag(P0, 'P', 0.1, -0.45);
+          const cur = [P0[0] + (Q[0] - P0[0]) * t, P0[1] + (Q[1] - P0[1]) * t];
+          const L = s * 1.2, Bw = s * 0.45;
+          const ang = Math.atan2(-(Q[1] - P0[1]), Q[0] - P0[0]) * 180 / Math.PI;   /* 화면 좌표 진행 방향 */
+          let wake = '';
+          if (t > 0.02 && t < 0.995) {   /* 물보라: 실제 진행 방향의 뒤쪽으로 V자 */
+            const back = ang + 180, sp = 16;
+            [-sp, sp].forEach((o2) => { const r = (back + o2) * Math.PI / 180; wake += '<path d="M0 ' + (L * 0.55).toFixed(1) + ' l' + (Math.cos(r) * L * 1.5).toFixed(1) + ' ' + (Math.sin(r) * L * 1.5).toFixed(1) + '" stroke="#fff" stroke-opacity=".8" stroke-width="' + (s * 0.07).toFixed(1) + '" stroke-linecap="round" fill="none"/>'; });
+          }
+          const hull = 'M0 ' + (-L) + ' C' + (Bw * 0.9) + ' ' + (-L * 0.55) + ' ' + Bw + ' ' + (-L * 0.05) + ' ' + Bw * 0.92 + ' ' + (L * 0.62) + ' Q' + Bw * 0.8 + ' ' + L * 0.98 + ' 0 ' + L * 0.98 + ' Q' + (-Bw * 0.8) + ' ' + L * 0.98 + ' ' + (-Bw * 0.92) + ' ' + (L * 0.62) + ' C' + (-Bw) + ' ' + (-L * 0.05) + ' ' + (-Bw * 0.9) + ' ' + (-L * 0.55) + ' 0 ' + (-L) + 'Z';
+          let planks = ''; for (let k = -2; k <= 2; k++) planks += '<line x1="' + (k * Bw * 0.26).toFixed(1) + '" y1="' + (-L * 0.62).toFixed(1) + '" x2="' + (k * Bw * 0.26).toFixed(1) + '" y2="' + (L * 0.8).toFixed(1) + '" stroke="#8E5626" stroke-opacity=".45" stroke-width="1"/>';
+          const bx0 = X(P0[0]), by0 = Y(P0[1]) - L * 1.02, bx1 = X(Q[0]), by1 = Y(Q[1]) + L * 1.06;
+          g += '<g transform="translate(' + (bx0 + (bx1 - bx0) * t).toFixed(1) + ' ' + (by0 + (by1 - by0) * t).toFixed(1) + ')">' + wake
+            + '<path d="' + hull + '" transform="translate(' + (s * 0.08).toFixed(1) + ' ' + (s * 0.1).toFixed(1) + ')" fill="#0A3D52" opacity=".35" filter="url(#rvShadow)"/>'
+            + '<path d="' + hull + '" fill="url(#rvHull)" stroke="#5B1A10" stroke-width="1.6"/>'
+            + '<path d="' + hull + '" transform="scale(.78 .84)" fill="url(#rvDeck)"/>' + '<g transform="scale(.78 .84)">' + planks + '</g>'
+            + '<rect x="' + (-Bw * 0.5).toFixed(1) + '" y="' + (-L * 0.08).toFixed(1) + '" width="' + Bw.toFixed(1) + '" height="' + (L * 0.62).toFixed(1) + '" rx="' + (Bw * 0.18).toFixed(1) + '" fill="#F5F2EA" stroke="#6B6F73" stroke-width="1.3"/>'
+            + '<rect x="' + (-Bw * 0.32).toFixed(1) + '" y="' + (L * 0.02).toFixed(1) + '" width="' + (Bw * 0.64).toFixed(1) + '" height="' + (L * 0.12).toFixed(1) + '" rx="2" fill="#3C6E8C"/>'
+            + '<line x1="0" y1="' + (-L * 0.42).toFixed(1) + '" x2="0" y2="' + (-L * 0.12).toFixed(1) + '" stroke="#5B3A1E" stroke-width="2.4"/>'
+            + '<path d="M0 ' + (-L * 0.42).toFixed(1) + ' L' + (-Bw * 1.25).toFixed(1) + ' ' + (-L * 0.02).toFixed(1) + ' L0 ' + (-L * 0.12).toFixed(1) + 'Z" fill="#F2C230" stroke="#B88A12" stroke-width="1.2"/>'
+            + '<path d="M0 ' + (-L * 0.42).toFixed(1) + ' L' + (-Bw * 1.25).toFixed(1) + ' ' + (-L * 0.02).toFixed(1) + '" stroke="#FFF3B8" stroke-width="1.4" fill="none" opacity=".8"/>'
+            + '</g>';
+          ptag(P0, 'P', 0, -0.62);
           readA.set('20 km/h'); readB.set(st.v + ' km/h'); readR.set(len([20, st.v]).toFixed(1).replace(/\.0$/, '') + ' km/h');
+          note.innerHTML = DT.md('강 너비는 **20 km**, 배는 북쪽으로 20 km/h라서 **1시간** 뒤 건너편에 닿아요.\n그동안 강물에 밀려 Q는 P의 맞은편에서 동쪽으로 **' + drift + ' km**.');
         }
         g += handles.map(([id, p]) => '<circle class="vops__h" data-h="' + id + '" cx="' + X(p[0]) + '" cy="' + Y(p[1]) + '" r="' + Math.max(18, s * 0.5) + '" fill="' + C.res + '" fill-opacity="0.08" stroke="' + C.res + '" stroke-opacity="0.55" stroke-width="2" stroke-dasharray="5 4"/>').join('');
         svgHost.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + DT.esc(NAMES[mode]) + '">' + g + '</svg>';
         tags.innerHTML = '';
         labels.forEach((l) => {
           if (l.at[0] < -0.2 || l.at[0] > COLS + 0.2 || l.at[1] < -0.2 || l.at[1] > ROWS + 0.2) return;
-          const d = DT.el('div', { class: 'vops__tag' + (l.plain ? ' is-pt' : '') + (!l.plain && !l.tex.includes('$') ? ' is-txt' : ''), html: l.plain || !l.tex.includes('$') ? DT.esc(l.tex) : DT.md(l.tex) });
+          const d = DT.el('div', { class: 'vops__tag' + (l.cls ? ' ' + l.cls : '') + (l.plain ? ' is-pt' : '') + (!l.plain && !l.tex.includes('$') ? ' is-txt' : ''), html: l.plain || !l.tex.includes('$') ? DT.esc(l.tex) : DT.md(l.tex) });
           d.style.left = X(l.at[0]) + 'px'; d.style.top = Y(l.at[1]) + 'px'; d.style.color = l.color; tags.append(d);
         });
         const exp = { add: '$\\overrightarrow{\\mathrm{AB}}+\\overrightarrow{\\mathrm{BC}}=\\overrightarrow{\\mathrm{AC}}$', para: '$\\overrightarrow{\\mathrm{AB}}+\\overrightarrow{\\mathrm{AD}}=\\overrightarrow{\\mathrm{AC}}$', sub: '$\\overrightarrow{\\mathrm{AB}}-\\overrightarrow{\\mathrm{AC}}=\\overrightarrow{\\mathrm{CB}}$', scalar: '$|k\\vec a|=|k||\\vec a|$', river: '실제로 움직이는 속도 = 배의 속도 + 강물의 속도', comp: '$\\vec a=a_1\\vec{e}_1+a_2\\vec{e}_2=(a_1,\\ a_2)$', divide: '$\\vec p=\\dfrac{m\\vec b+n\\vec a}{m+n}$', dot: '두 방법으로 구한 내적은 언제나 같아요.', line: '$\\vec p=\\vec a+t\\vec u$', normal: '$(\\vec p-\\vec a)\\cdot\\vec n=0$' }[mode];
@@ -314,6 +377,8 @@
     '.vops__tags{position:absolute;inset:0;pointer-events:none;overflow:hidden}',
     '.vops__tag{position:absolute;transform:translate(-50%,-50%);font-family:"Times New Roman",Georgia,serif;font-style:italic;font-size:clamp(20px,1.7vw,34px);font-weight:500;white-space:nowrap;text-shadow:0 0 4px #fff,0 0 2px #fff,0 0 8px #fff;line-height:1.1}',
     '.vops__tag.is-pt{font-style:normal;color:#17191B;background:none}',
+    '.vops__tag.is-km{font-family:var(--f-text);font-style:normal;font-weight:700;font-size:clamp(13px,.95vw,19px);color:#2B2F33}',
+    '.vops__tag.is-dim{font-family:var(--f-text);font-style:normal;font-weight:800;font-size:clamp(14px,1.05vw,21px);transform:translate(-50%,-50%) rotate(-90deg);background:rgba(255,255,255,.85);padding:.1em .5em;border-radius:99px}',
     '.vops__tag.is-txt{font-family:var(--f-text);font-style:normal;font-weight:800;font-size:clamp(16px,1.25vw,26px)}',
     '.vops__modes{display:grid;grid-template-columns:1fr 1fr;gap:.3em}',
     '.vops__modes button{min-height:2.5em;border-radius:.8em;background:var(--paper-2);font-weight:750;color:var(--ink-2);padding:0 .4em}',

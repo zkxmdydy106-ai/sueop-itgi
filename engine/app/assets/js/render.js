@@ -112,7 +112,7 @@
         n = DT.el('button', { class: 'b-lab', type: 'button', 'data-lab': b.lab },
           DT.el('span', { class: 'b-lab__icon', html: DT.icon(b.icon || 'cube') }),
           DT.el('span', { class: 'b-lab__text' }, DT.el('b', null, b.label || '3D로 돌려 보기'), b.desc ? DT.el('span', { html: md(b.desc) }) : null));
-        n.addEventListener('click', () => { if (DT.lab) DT.lab.open(b.lab, b.props || {}, { title: b.title || b.label, fig: b.fig, theme: b.theme }); });
+        n.addEventListener('click', () => { if (DT.lab) DT.lab.open(b.lab, b.props || {}, { title: b.title || b.label, fig: b.fig, theme: b.theme, ask: b.ask }); });
         break;
       }
       case 'extra': {   /* 연결된 수업 활동(예: 드론 미션) — config.extras 의 id, m = 미션 */
@@ -146,6 +146,18 @@
     return n;
   };
 
+  /* ── 선생님이 화면에서 고친 것 (edits/{과정__화면}) — content는 그대로 두고 덧씌운다 ──
+     e: { order:[블록 id], hide:[id], scale:{id:배율}, hl:{id:'yellow'|'pink'|'sky'}, text:{id:글}, notes:[{id, x}] } */
+  R.applyEdits = function (s, e) {
+    if (!e) return s;
+    const o = Object.assign({}, s); let bs = (s.blocks || []).slice();
+    const tx = (b) => { let o2 = e.text && e.text[b.id] != null ? Object.assign({}, b, { x: e.text[b.id], _edited: true }) : b; if (b.cols) o2 = Object.assign({}, o2, { cols: b.cols.map((c) => c.map(tx)) }); return o2; };
+    bs = bs.map(tx);   /* 두 단(cols) 안의 문단도 */
+    (e.notes || []).forEach((n) => bs.push({ t: 'note', id: n.id, x: n.x, label: '선생님 메모', _mine: true }));
+    if (e.order && e.order.length) { const pos = (b) => { const i = e.order.indexOf(b.id); return i < 0 ? 1e6 + bs.indexOf(b) : i; }; bs = bs.slice().sort((a, b) => pos(a) - pos(b)); }
+    o.blocks = bs; o._edits = e; return o;
+  };
+
   /* ── 화면 하나 ───────────────────────────────────
      ctx: { interactive, onQuestion(b), revealAll } */
   R.screen = function (s, ctx) {
@@ -159,7 +171,15 @@
     if (s.lead) head.append(DT.el('p', { class: 'page__lead', html: md(s.lead) }));
     const body = DT.el('div', { class: 'page__body' });
     const fit = DT.el('div', { class: 'page__fit' });
-    (s.blocks || []).forEach((b) => fit.append(R.block(b, ctx)));
+    const ed = s._edits || {};
+    (s.blocks || []).forEach((b) => { const n = R.block(b, ctx); if (b._mine) n.classList.add('b-note--mine'); fit.append(n); });
+    /* 숨기기·크기·형광은 두 단 안의 상자까지 id로 */
+    if (s._edits) DT.$$('[data-block]', fit).forEach((n) => {
+      const id = n.dataset.block;
+      if ((ed.hide || []).includes(id)) { if (ctx.editing) n.classList.add('ed-hidden'); else { n.remove(); return; } }
+      if (ed.scale && ed.scale[id] && ed.scale[id] !== 1) n.style.zoom = ed.scale[id];
+      if (ed.hl && ed.hl[id]) n.classList.add('ed-hl', 'ed-hl--' + ed.hl[id]);
+    });
     body.append(fit);
     page.append(head, body);
     return page;

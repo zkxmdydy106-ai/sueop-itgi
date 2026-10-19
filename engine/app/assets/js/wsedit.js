@@ -189,6 +189,14 @@
   const typeName = { blank: '빈칸', short: '단답', choice: '객관식', ox: 'O/X', open: '서술형', group: '모둠', roles: '역할', peer: '동료평가', self: '자기평가', reflect: '한 줄 정리', career: '진로' };
 
   /* 편집기: w = { title, items } 를 직접 고친다. 반환: 요소 */
+  /* 수식 버튼이 달린 '보이는 그대로' 글 칸 (화면 고치기에서도 씀) */
+  W.richEditor = function (ph, initial) {
+    const q = richBox(ph); q.set(initial || '');
+    const pal = DT.el('div', { class: 'wse-math' }, DT.el('span', { class: 'muted' }, '수식 넣기'), TPL.map((t, ti) => {
+      const b = DT.el('button', { class: 'chip', type: 'button', title: t.lab, html: DT.tex(t.tex(t.f.map((x) => x[1])), false) + (/[가-힣]/.test(t.lab) ? ' <small>' + t.lab + '</small>' : '') });
+      b.addEventListener('pointerdown', (e) => e.preventDefault()); b.onclick = () => q.insert(ti); return b; }));
+    return { el: DT.el('div', { class: 'wse-form' }, q.el, pal), get: q.get };
+  };
   W.editor = function (w, pool) {
     const root = DT.el('div', { class: 'wse' });
     const title = DT.el('input', { class: 'input wse-title', value: w.title || '', 'aria-label': '학습지 제목', placeholder: '학습지 제목' });

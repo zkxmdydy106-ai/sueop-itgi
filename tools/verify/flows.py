@@ -156,6 +156,35 @@ async def main():
             await bd.click('.inkbar__main'); await bd.mouse.move(600, 500); await bd.mouse.down(); await bd.mouse.move(800, 560, steps=6); await bd.mouse.up(); await bd.wait_for_timeout(300)
             await bd.click('.inkbar__mini'); await bd.click('.inkbar__main'); await bd.keyboard.press('Escape')
         await step('판서', ink(), bd, '칠판')
+        async def ink_colors():
+            if not await bd.is_visible('.inkbar__more'): await bd.click('.inkbar__main'); await bd.wait_for_timeout(300)
+            await bd.click('.inkbar__more'); await bd.wait_for_timeout(300)
+            await bd.click('.inkcol__slot >> nth=5'); await bd.click('.inkcol__c >> nth=10'); await bd.click('.modal__foot >> text=처음 색으로'); await bd.click('.modal__foot >> text=다 했어요')
+            await bd.keyboard.press('Escape')
+        await step('판서 색 바꾸기', ink_colors(), bd, '칠판')
+        async def screen_edit():
+            await tool('화면 고치기'); await bd.wait_for_timeout(500)
+            await bd.click('.page .ed-target >> nth=0'); await bd.click('.edtool [aria-label=크게]'); await bd.click('.edtool >> text=노랑')
+            await bd.click('.edbar >> text=선생님 메모 더하기'); await bd.click('.modal .wse-rich'); await bd.keyboard.type('시험 메모'); await bd.click('.modal__foot >> text=넣기'); await bd.wait_for_timeout(300)
+            await bd.click('.edbar >> text=저장하기'); await bd.wait_for_timeout(600)
+            if not await bd.locator('.page .b-note--mine').count(): raise Exception('저장한 메모가 칠판에 안 보임')
+            await tool('화면 고치기'); await bd.click('.edbar >> text=처음대로'); await bd.click('.modal__foot .btn--ink'); await bd.click('.edbar >> text=저장하기'); await bd.wait_for_timeout(500)
+        await step('화면 고치기', screen_edit(), bd, '칠판')
+        # 탐구 그림: 칠판에서 모형 열기 → 「학생과 같이」 → 값 모으기 → 막대 눌러 칠판에 넣기 → 끝내기
+        lab = await bd.evaluate("""(async () => { const tb = DT.render.flatten(await DT.data.getCourse()); let f = null;
+          const walk = (bs) => (bs || []).forEach((x) => { if (!f && x.t === 'lab') f = x; if (x.cols) x.cols.forEach(walk); });
+          tb._screens.forEach((sc) => walk(sc.blocks)); return f ? JSON.stringify({ lab: f.lab, props: f.props || {}, title: f.title || f.label, ask: f.ask }) : null; })()""")
+        if lab:
+            async def lab_live():
+                await bd.evaluate("(b) => { b = JSON.parse(b); DT.lab.open(b.lab, b.props, { title: b.title, ask: b.ask }); }", lab); await bd.wait_for_timeout(2500)
+                if await bd.locator('.lab__btn--live').count():
+                    await bd.click('.lab__btn--live'); await bd.wait_for_timeout(600)
+                    await bd.click('.lablive__demo'); await bd.wait_for_timeout(1500)
+                    n = await bd.locator('.lablive__col').count()
+                    if not n: raise Exception('학생 값 막대가 안 나옴')
+                    await bd.click('.lablive__col >> nth=0'); await bd.click('.lablive >> text=모으기 끝내기'); await bd.wait_for_timeout(300)
+                await bd.click('.lab__close'); await bd.wait_for_timeout(300)
+            await step('탐구 그림 학생과 같이', lab_live(), bd, '칠판')
         async def end():
             await tool('수업 마치기'); await bd.click('.modal__foot .btn--ink'); await bd.wait_for_timeout(800)
         await step('수업 마치기', end(), bd, '칠판')

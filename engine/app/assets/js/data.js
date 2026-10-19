@@ -112,6 +112,8 @@
       /* 수업 실시간 */
       async setLive(classId, patch) { const cur = col('live').find((l) => l.id === classId) || { id: classId, classId }; return upsert('live', Object.assign({}, cur, patch, { at: Date.now() })); },
       onLive(classId, cb) { return listen('live', (l) => l.id === classId, (rows) => cb(rows[0] || null)); },
+      async getEdits(courseId) { const m = {}; col('edits').filter((e) => e.courseId === courseId).forEach((e) => (m[e.screenId] = e)); return m; },
+      async saveEdit(courseId, screenId, e) { return upsert('edits', Object.assign({ order: [], hide: [], scale: {}, hl: {}, text: {}, notes: [] }, e, { id: courseId + '__' + screenId, courseId, screenId, at: Date.now() })); },
       async sendLiveAnswer(classId, qid, key, value) { return upsert('liveAnswers', { id: classId + '__' + qid + '__' + key, classId, qid, key, value, at: Date.now() }); },
       onLiveAnswers(classId, qid, cb) { return listen('liveAnswers', (a) => a.classId === classId && a.qid === qid, cb); },
       async listLiveAnswers(classId) { return col('liveAnswers').filter((a) => a.classId === classId); },
@@ -335,6 +337,8 @@
       },
       async setLive(classId, patch) { await fs.collection('live').doc(classId).set(Object.assign({ classId }, patch, { at: ts() }), { merge: true }); },
       onLive(classId, cb) { return fs.collection('live').doc(classId).onSnapshot((d) => cb(d.exists ? d.data() : null), () => cb(null)); },
+      async getEdits(courseId) { const m = {}; try { docs(await fs.collection('edits').where('courseId', '==', courseId).get()).forEach((e) => (m[e.screenId] = e)); } catch (err) { /* 규칙 없는 옛 서버: 고친 것 없이 */ } return m; },
+      async saveEdit(courseId, screenId, e) { await fs.collection('edits').doc(courseId + '__' + screenId).set(Object.assign({ order: [], hide: [], scale: {}, hl: {}, text: {}, notes: [] }, e, { courseId, screenId, at: ts() })); },
       async sendLiveAnswer(classId, qid, key, value) { await fs.collection('liveAnswers').doc(classId + '__' + qid + '__' + skey(key)).set({ classId, qid, key, value, at: ts() }); },
       onLiveAnswers(classId, qid, cb) { return fs.collection('liveAnswers').where('classId', '==', classId).where('qid', '==', qid).onSnapshot((s) => cb(docs(s))); },
       async listLiveAnswers(classId) { return docs(await fs.collection('liveAnswers').where('classId', '==', classId).get()); },

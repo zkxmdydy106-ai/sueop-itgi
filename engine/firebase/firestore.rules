@@ -66,6 +66,7 @@ service cloud.firestore {
     }
 
     // 수업 중 실시간
+    match /edits/{id}       { allow read: if isTeacher() || isMember(); allow write: if isTeacher(); }   // 화면에서 바로 고치기
     match /live/{cid}        { allow read: if isTeacher() || inMyClass(cid); allow write: if isTeacher(); }
     match /liveAnswers/{id} {
       allow read: if isTeacher() || (isMember() && resource.data.key == email());

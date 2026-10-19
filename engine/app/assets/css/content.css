@@ -158,3 +158,9 @@ mark { background: linear-gradient(transparent 52%, var(--mark) 52%); color: inh
 .backchip .ic { width: 28px; height: 28px; }
 
 .is-reading { background: rgba(42,120,214,.14); border-radius: 8px; box-shadow: 0 0 0 6px rgba(42,120,214,.14); }
+
+/* 선생님이 화면에서 고친 것 (칠판·학생 공통) */
+.ed-hl { border-radius: .35em; box-shadow: 0 0 0 .35em var(--edhl); background: var(--edhl); }
+.ed-hl--yellow { --edhl: #FFF0A0; } .ed-hl--pink { --edhl: #FFD3E2; } .ed-hl--sky { --edhl: #CFEBFF; }
+.b-note--mine { border-left: .3em solid var(--accent); }
+.b-note--mine .b-note__label { color: var(--accent); }
