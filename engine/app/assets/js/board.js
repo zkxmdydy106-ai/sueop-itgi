@@ -90,7 +90,7 @@
     bindKeys();
     go(S.idx, 0);
     setTimeout(prefetchPages, 3000);
-    if (q.class === 'none') await useClass(null); else if (!S.classId && S.cls.length) await pickClass(true); else await useClass(S.classId);
+    if (q.class === 'none' || C.noStudents) await useClass(null); else if (!S.classId && S.cls.length) await pickClass(true); else await useClass(S.classId);
     if (!DT.store.get('board.coached', false)) setTimeout(coach, 500);
   }
   function fatal(msg) { $('#sheet').innerHTML = '<div class="page"><div class="page__head"><h2 class="page__title">열 수 없어요</h2></div><p style="font-size:30px;color:var(--ink-2)">' + DT.esc(msg) + '</p></div>'; }
@@ -112,6 +112,7 @@
     $('#btnPrev').onclick = () => step(-1); $('#btnNext').onclick = () => step(1);
     $('#btnToc').onclick = openToc; $('#btnTools').onclick = toggleTools; $('#btnFull').onclick = DT.fullscreen;
     $('#btnClass').onclick = () => (DT.data.mode === 'local' ? linkInfo() : pickClass(false));
+    if (C.noStudents) $('#btnClass').hidden = true;   /* 수업 자료만: 반 없음 */
     $('#bookTab').onclick = () => openBook();
     document.addEventListener('fullscreenchange', () => { $('#btnFull').innerHTML = DT.icon(document.fullscreenElement ? 'shrink' : 'expand'); });
   }
@@ -446,15 +447,18 @@
     const item = (ic, t, d, fn, wide) => { const b = DT.el('button', { class: 'toolmenu__item' + (wide ? ' toolmenu__item--wide' : ''), type: 'button', role: 'menuitem', html: DT.icon(ic) + '<b>' + t + '</b><span>' + d + '</span>' }); b.onclick = () => { close(); fn(); }; m.append(b); };
     /* 반이 없으면 조용히 끝내지 않고 반 고르기 창을 띄운다 (링크로 연 칠판은 휴대폰 QR 안내) */
     const needClass = (fn) => () => (S.classId ? fn() : DT.data.mode === 'local' ? linkInfo() : pickClass(false));
-    item('send', '학습지 보내기', '이 소단원 학습지를 학생 아이패드로', needClass(openSend), true);
-    item('ask', '학생에게 묻기', 'O/X · 고르기 · 짧은 답을 바로', needClass(() => openAsk(null)));
-    item('signal', '이해도 · 질문함' + (nq ? '<i class="toolmenu__badge num">' + nq + '</i>' : ''), '학생들의 신호와 익명 질문', needClass(openSignals));
-    item('users', '모둠 만들기', '정답률을 고려해 고르게 섞기', needClass(openGroups));
-    item('dice', '발표자 뽑기', '무작위로 한 명', needClass(openPicker));
+    const NS = !!C.noStudents;   /* 수업 자료만 (태블릿 수업 안 함): 반·학생 기능 없이 칠판·판서·학습지 인쇄 */
+    if (NS) item('send', '학습지 만들기 · 인쇄', '이 소단원 학습지를 골라 만들고 종이로 인쇄', openSend, true);
+    else item('send', '학습지 보내기', '이 소단원 학습지를 학생 아이패드로', needClass(openSend), true);
+    if (!NS) {
+      item('ask', '학생에게 묻기', 'O/X · 고르기 · 짧은 답을 바로', needClass(() => openAsk(null)));
+      item('signal', '이해도 · 질문함' + (nq ? '<i class="toolmenu__badge num">' + nq + '</i>' : ''), '학생들의 신호와 익명 질문', needClass(openSignals));
+      item('users', '모둠 만들기', '정답률을 고려해 고르게 섞기', needClass(openGroups));
+      item('dice', '발표자 뽑기', '무작위로 한 명', needClass(openPicker));
+    }
     item('timer', '타이머', '1·3·5분, 화면 위에 작게', openTimer);
     item('board', '빈 칠판', '흰 바탕 · 모눈 · 초록 칠판', openBlank);
-    item('note', '수업 마치기', '오늘 진도와 반응을 일지로 저장', needClass(endLesson));
-    item('qr', '학생 접속 QR', '아이패드로 찍기 · 클래스룸에 올리기', studentQR);
+    if (!NS) { item('note', '수업 마치기', '오늘 진도와 반응을 일지로 저장', needClass(endLesson)); item('qr', '학생 접속 QR', '아이패드로 찍기 · 클래스룸에 올리기', studentQR); }
     item('palette', '화면 테마', '밝은 색 7가지 중 고르기', () => DT.theme.open());
     item('question', '사용 안내', '처음 안내와 단축키 다시 보기', coach);
     const close = () => { m.remove(); $('#btnTools').setAttribute('aria-expanded', 'false'); popEsc(); };
@@ -495,6 +499,15 @@
         { label: '미리 보기', icon: 'eye', onClick: () => (w.items.length ? DT.ws.openPreview(w) : DT.toast('문항이 없어요.', 'bad')) },
         { label: '인쇄', icon: 'print', onClick: () => (!w.items.length ? DT.toast('문항이 없어요.', 'bad') : DT.ws.check(w) ? DT.toast(DT.ws.check(w), 'bad') : DT.ws.print(w, S.className)) },
         { label: S.className + '에 보내기', kind: 'ink', icon: 'send', onClick: (close) => sendW(w, close) }] });
+    }
+    if (C.noStudents) {   /* 수업 자료만: 만들고 인쇄 */
+      return DT.modal({ title: '학습지 만들기 · 인쇄', body: wrap, wide: true, actions: [{ label: '닫기' },
+        { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } },
+        { label: '문제 모음 PDF·인쇄', icon: 'download', onClick: () => { const w = DT.ws.compile(S.tb, ids()); if (!w.items.length) return DT.toast('이 범위에는 문제가 없어요.', 'bad'); DT.ws.print(w, '', { sections: true }); } },
+        { label: '직접 고르기', icon: 'pencil', onClick: (c0) => { const w = DT.ws.build(S.tb, ids(), kind); w.kind = 'custom'; const pool = DT.ws.pool(S.tb, ids()); c0();
+          DT.modal({ title: '학습지 직접 고르기', body: DT.ws.editor(w, pool), wide: true, cls: 'modal--tall modal--xl', sticky: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => (w.items.length ? DT.ws.openPreview(w) : DT.toast('문항이 없어요.', 'bad')) },
+            { label: '인쇄', kind: 'ink', icon: 'print', onClick: () => (!w.items.length ? DT.toast('문항이 없어요.', 'bad') : DT.ws.check(w) ? DT.toast(DT.ws.check(w), 'bad') : DT.ws.print(w, '')) }] }); } },
+        { label: '인쇄', kind: 'ink', icon: 'print', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.print(w, ''); } }] });
     }
     DT.modal({ title: S.className + '에 학습지 보내기', body: wrap, wide: true, actions: [{ label: '닫기' }, { label: '미리 보기', icon: 'eye', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.openPreview(w); } }, { label: '인쇄', icon: 'print', onClick: () => { const w = DT.ws.build(S.tb, ids(), kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad'); DT.ws.print(w, S.className); } }, { label: '직접 고르기', icon: 'pencil', onClick: (close) => editW(close) }, { label: '문제 모음 PDF·인쇄', icon: 'download', onClick: () => { const w = DT.ws.compile(S.tb, ids()); if (!w.items.length) return DT.toast('이 범위에는 문제가 없어요.', 'bad'); DT.ws.print(w, S.className, { sections: true }); } }, { label: '보내기', kind: 'ink', icon: 'send', onClick: async (close) => {
       const w = DT.ws.build(S.tb, ids(), kind); await sendW(w, close);

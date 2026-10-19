@@ -351,7 +351,7 @@
     }
     scrim.append(box);
     scrim.addEventListener('pointerdown', (e) => { if (e.target === scrim && !o.sticky) close(); });
-    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    const onKey = (e) => { if (e.key !== 'Escape') return; const all = document.querySelectorAll('.scrim'); if (all[all.length - 1] !== scrim) return; e.stopPropagation(); close(); };   /* 맨 위 창 하나만 닫는다 */
     document.addEventListener('keydown', onKey, true);
     document.body.append(scrim);
     setTimeout(() => { const f = body.querySelector('input,textarea,select') || body.querySelector('button') || box.querySelector('.modal__foot .btn--ink, .modal__foot .btn--accent') || box.querySelector('button'); if (f) f.focus({ preventScroll: true }); }, 30);

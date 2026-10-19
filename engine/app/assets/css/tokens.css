@@ -241,3 +241,11 @@ a.btn { text-decoration: none; }
 .wse-rich:empty::before { content: attr(data-ph); color: var(--ink-3, #999); }
 .wse-mchip { display: inline-block; padding: 0 3px; margin: 0 1px; border-radius: 6px; background: var(--accent-wash); cursor: pointer; user-select: none; }
 .wse-mchip:hover { outline: 1.5px solid var(--accent); }
+.wse-psg { display: grid; gap: 6px; }
+.wse-psg h4 { margin: 10px 0 2px; font-size: 14px; color: var(--ink-2); }
+.wse-psg button { text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--white); font-size: 15px; line-height: 1.6; }
+.wse-psg button:hover { border-color: var(--ink); }
+.wse-psg__blk { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--white); }
+.wse-psg .wse-psg__s { border: 1.5px solid transparent; border-radius: 8px; padding: 2px 6px; background: none; font-size: 15px; line-height: 1.7; text-align: left; }
+.wse-psg .wse-psg__s:hover { border-color: var(--line-2); }
+.wse-psg .wse-psg__s.is-on { background: var(--accent-wash); border-color: var(--accent); }

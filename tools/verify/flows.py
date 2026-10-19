@@ -92,7 +92,14 @@ async def main():
             await t.click('.chip:has-text("내 문제 쓰기")')
             for typ, fill in [('short', ['6']), ('choice', ['1', '2', '3']), ('ox', []), ('open', [])]:
                 await t.select_option('.wse-form select >> nth=0', typ)
-                await t.fill('.wse-form textarea >> nth=0', '시험 문제 $\\vec{a}$ ' + typ)
+                await t.click('.wse-rich'); await t.keyboard.type('시험 문제 ' + typ + ' ')
+                if typ == 'short':
+                    await t.click('.wse-math .chip[title="벡터"]'); await t.click('.modal__foot >> text=넣기')
+                    if await t.is_visible('text=교과서에서 지문 가져오기'):
+                        await t.click('text=교과서에서 지문 가져오기'); await t.wait_for_timeout(300)
+                        if await t.is_visible('.wse-psg button'): await t.click('.wse-psg button >> nth=0')
+                        if await t.is_visible('.modal__foot >> text=고른 문장 넣기'): await t.click('.modal__foot >> text=고른 문장 넣기')
+                        await t.wait_for_timeout(300)
                 for i, v in enumerate(fill): await t.fill('.wse-form input >> nth=%d' % i, v)
                 await t.click('text=학습지에 넣기'); await t.wait_for_timeout(150)
             await t.click('.modal__foot .btn--ink'); await t.wait_for_timeout(800)

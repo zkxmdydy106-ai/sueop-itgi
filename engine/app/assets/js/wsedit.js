@@ -69,7 +69,7 @@
   }
 
   /* 내 문제 쓰기 */
-  function customForm(onAdd) {
+  function customForm(onAdd, pool) {
     const type = DT.el('select', { class: 'select', 'aria-label': '문제 종류' }, [['short', '단답형 (자동 채점)'], ['choice', '객관식 (자동 채점)'], ['ox', 'O / X (자동 채점)'], ['open', '서술형 (선생님 확인)']].map(([v, t]) => DT.el('option', { value: v }, t)));
     const q = richBox('문제를 적어 주세요. 수식은 아래 「수식 넣기」 버튼으로 넣어요.');
     const extra = DT.el('div', { style: { display: 'grid', gap: '8px' } });
@@ -95,7 +95,33 @@
       b.onclick = () => q.insert(ti);
       return b; }));
     const form = DT.el('div', { class: 'wse-form' });
-    form.append(type, q.el, pal, DT.el('p', { class: 'muted', style: { margin: 0, fontSize: '13px' } }, '칸에 보이는 모양 그대로 학생에게 보여요. 수식을 누르면 글자를 바꿀 수 있어요.'), extra, add);
+    /* 탐구·국어처럼 지문이 필요할 때: 고른 범위의 교과서 글을 골라 문제 칸에 그대로 넣는다 (넣은 뒤 고쳐도 됨) */
+    const psg = (pool || []).filter((x) => x.sentence && x.x);
+    const take = psg.length ? DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('book') + '교과서에서 지문 가져오기', onclick: () => {
+      const list = DT.el('div', { class: 'wse-psg' }); const qs = DT.el('input', { class: 'input', placeholder: '찾을 낱말 (예: 내적)', 'aria-label': '찾기' });
+      const m = DT.modal({ title: '교과서에서 지문 가져오기', wide: true, cls: 'modal--tall', body: DT.el('div', { style: { display: 'grid', gap: '8px' } }, qs, list), actions: [{ label: '닫기' }] });
+      /* 문장 단위로 골라 넣기: 지문을 문장으로 나눠 보여 주고, 누른 문장만 모아 넣는다 (수식은 깨지지 않음) */
+      const picked = [];
+      const go = DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('plus') + '고른 문장 넣기 (0)', disabled: true });
+      go.onclick = () => { if (!picked.length) return; q.add(picked.map((x) => x.t).join(' ')); m.close(); DT.toast('지문을 넣었어요. 이어서 문제를 적어요.'); };
+      const sents = (x) => String(x).replace(/\[\[([^\]]+?)\]\]/g, '$1').replace(/\*\*|==|__/g, '').split(/(?<=[.?!다요])\s+(?=[^$]*(?:\$[^$]*\$[^$]*)*$)/).map((t) => t.trim()).filter(Boolean);
+      const paintL = () => { list.innerHTML = ''; const k = qs.value.trim(); let lastT = '';
+        psg.filter((x) => !k || DT.plain(x.x).includes(k)).slice(0, 80).forEach((x) => {
+          const t = (x.src && x.src.title || '') + (x.src && x.src.page ? ' · 교과서 ' + x.src.page + '쪽' : '');
+          if (t !== lastT) { list.append(DT.el('h4', null, t)); lastT = t; }
+          const blk = DT.el('div', { class: 'wse-psg__blk' });
+          sents(x.x).forEach((st, si) => {
+            const key = x.id + ':' + si; const on = picked.some((y) => y.k === key);
+            const b = DT.el('button', { type: 'button', class: 'wse-psg__s' + (on ? ' is-on' : ''), html: DT.md(st) });
+            b.onclick = () => { const at = picked.findIndex((y) => y.k === key); if (at >= 0) picked.splice(at, 1); else picked.push({ k: key, t: st }); b.classList.toggle('is-on', at < 0); go.disabled = !picked.length; go.innerHTML = DT.icon('plus') + '고른 문장 넣기 (' + picked.length + ')'; };
+            blk.append(b);
+          });
+          const all = DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button' }, '이 글 통째로 넣기'); all.onclick = () => { q.add(sents(x.x).join(' ')); m.close(); DT.toast('지문을 넣었어요. 이어서 문제를 적어요.'); };
+          list.append(blk, all); }); };
+      list.before(DT.el('p', { class: 'muted', style: { margin: 0 } }, '넣을 문장을 눌러 고르세요 (여러 개 가능). 다 고르면 아래 「고른 문장 넣기」.'));
+      m.box.querySelector('.modal__foot').prepend(go);
+      qs.oninput = paintL; paintL(); } }) : null;
+    form.append(type, ...(take ? [take] : []), q.el, pal, DT.el('p', { class: 'muted', style: { margin: 0, fontSize: '13px' } }, '칸에 보이는 모양 그대로 학생에게 보여요. 수식을 누르면 글자를 바꿀 수 있어요.'), extra, add);
     return form;
   }
 
@@ -151,10 +177,12 @@
         else if (x.nodeName === 'BR') out.push('\n');
         else { if (/^(DIV|P)$/.test(x.nodeName) && out.length) out.push('\n'); walk(x); }
       });
-      walk(el); return out.join('').replace(/[ \t]+\n/g, '\n').trim();
+      walk(el); return out.join('').replace(/\u200b/g, '').replace(/[ \t]+\n/g, '\n').trim();
     }
     function set(v) { el.innerHTML = ''; String(v || '').split(/(\$[^$]+\$)/).forEach((part) => { if (/^\$[^$]+\$$/.test(part)) el.append(DT.el('span', { class: 'wse-mchip', contenteditable: 'false', 'data-tex': part.slice(1, -1), html: DT.tex(part.slice(1, -1), false) })); else if (part) el.append(document.createTextNode(part)); }); }
-    return { el, get, set, insert };
+    /* 글(수식 포함)을 칸 끝에 덧붙이기 — 지문 가져오기 */
+    function add(v) { const cur = get(); set((cur ? cur + '\n' : '') + v); el.append(document.createElement('br')); const tail = document.createTextNode('\u200b'); el.append(tail); el.focus(); const r = document.createRange(); r.setStart(tail, 1); r.collapse(true); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); range = r.cloneRange(); }
+    return { el, get, set, insert, add };
   }
 
   const summary = (it) => DT.plain(it.type === 'blank' ? String(it.x || '').replace(/\[\[([^\]]+)\]\]/g, '( )') : it.q || (it.prompts || []).join(' / ') || (it.criteria || []).map((c) => c.text).join(', ') || '').slice(0, 70);
@@ -215,7 +243,7 @@
       side.innerHTML = '';
       const tabs = DT.el('div', { class: 'chips' }, [['book', '교과서에서 넣기'], ['mine', '내 문제 쓰기']].map(([id, t]) => DT.el('button', { class: 'chip', type: 'button', 'aria-pressed': tab === id ? 'true' : 'false', onclick: () => { tab = id; paintSide(); } }, t)));
       side.append(tabs);
-      if (tab === 'mine') { side.append(customForm((it) => { w.items.push(it); paintList(); DT.toast('넣었어요. 왼쪽 맨 아래에 있어요.'); })); return; }
+      if (tab === 'mine') { side.append(customForm((it) => { w.items.push(it); paintList(); DT.toast('넣었어요. 왼쪽 맨 아래에 있어요.'); }, pool)); return; }
       /* 고르기 쉽게: 종류 → (변형 문제면) 개념 */
       const groupOf = (p) => (p.variant ? 'var' : p.sentence ? 'sent' : p.type === 'blank' ? 'blank' : ['short', 'choice', 'ox', 'open'].includes(p.type) ? 'book' : 'act');
       const fchips = DT.el('div', { class: 'chips wse-filter' }, [['all', '전체'], ['var', '변형 문제'], ['book', '교과서 문제'], ['blank', '개념 빈칸'], ['sent', '문장에 빈칸 직접'], ['act', '활동·평가']]

@@ -13,6 +13,7 @@ window.DT_CONFIG = {
   theme: 'paper',
   extras: [],
   teacherEmails: [],
+  noStudents: false,   // true: 태블릿 수업 안 함 — 반·학생 기능 없이 칠판·판서·학습지 인쇄만 (수업 자료로만)
   printCss: null,   // 반마다 자기 학습지 인쇄 양식: 'print/worksheet.css' (작업물/<교과서>/print/ 에 두면 배포 때 함께 올라감)
   authHere: false,  // true: 로그인을 이 사이트 주소로(아이폰 사파리 필수). 구글 클라우드 OAuth 클라이언트에 https://<프로젝트>.web.app/__/auth/handler 등록 뒤 켠다
   firebase: null
