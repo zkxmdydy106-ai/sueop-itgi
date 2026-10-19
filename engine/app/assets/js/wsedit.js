@@ -255,7 +255,7 @@
       pa.append(W.paper(w, { answers, cls: clsName, sections: popt.sections }));
       /* 반 양식 CSS를 처음 한 번 불러온다 */
       const C = DT.config; let cssReady = Promise.resolve();
-      if (C.printCss && !document.getElementById('printCss')) { const l = DT.el('link', { rel: 'stylesheet', id: 'printCss', href: C.printCss }); cssReady = new Promise((ok) => { l.onload = l.onerror = ok; setTimeout(ok, 2000); }); document.head.append(l); }
+      if (C.printCss && !document.getElementById('printCss')) { const l = DT.el('link', { rel: 'stylesheet', id: 'printCss', href: C.printCss + (C.printCss.includes('?') ? '&' : '?') + 'v=' + Date.now() }); cssReady = new Promise((ok) => { l.onload = l.onerror = ok; setTimeout(ok, 2000); }); document.head.append(l); }
       const imgs = DT.$$('img', pa); let left = imgs.length;
       const fire = () => cssReady.then(() => setTimeout(() => window.print(), 150));
       if (!left) return fire();
