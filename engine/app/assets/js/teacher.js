@@ -276,14 +276,14 @@
     [['today', '오늘까지'], ['tomorrow', '내일까지'], ['week', '일주일 뒤까지']].forEach(([v, t]) => dues.append(DT.el('button', { class: 'chip', type: 'button', 'aria-pressed': v === due ? 'true' : 'false', onclick: (e) => { due = v; DT.$$('.chip', dues).forEach((x) => x.setAttribute('aria-pressed', x === e.currentTarget ? 'true' : 'false')); } }, t)));
     function paintPrev() { const w = DT.ws.build(T.tb, [...picked], kind); prev.innerHTML = w.items.length ? '<b style="color:var(--ink)">' + w.items.length + '문항</b>이 교과서 내용으로 만들어져요 — ' + DT.esc(w.items.slice(0, 5).map((i) => DT.plain(i.label)).join(', ')) + (w.items.length > 5 ? ' …' : '') : '고른 범위에는 이 종류로 만들 내용이 없어요. 범위를 넓히거나 다른 종류를 골라 주세요.'; }
     const f = (t, n) => DT.el('div', { class: 'field' }, DT.el('span', null, t), n);
-    box.append(f('1. 교과서 범위', DT.el('div', { style: { display: 'grid', gap: '8px' } }, subSel, scope)), f('2. 무엇을', kinds), f('3. ' + cls().name + ' · 언제까지', dues), prev);
+    box.append(f('1. 교과서 범위', DT.el('div', { style: { display: 'grid', gap: '8px' } }, subSel, scope)), f('2. 무엇을', kinds), prev);
     paintScope(); paintPrev();
     const dueTime = () => { const d = new Date(); if (due === 'tomorrow') d.setDate(d.getDate() + 1); if (due === 'week') d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0); return d.getTime(); };
     async function sendW(w, close) {
       if (!w.items.length) return DT.toast('문항이 없어요.', 'bad');
       const bad = DT.ws.check(w); if (bad) return DT.toast(bad, 'bad');
       if (w.items.some((it) => it.type === 'group') && !w.groups) w.groups = await DT.data.getGroups(T.classId);
-      await DT.data.createAssignment(Object.assign(w, { classId: T.classId, courseId: C.courseId, due: dueTime() }));
+      await DT.data.createAssignment(Object.assign(w, { classId: T.classId, courseId: C.courseId, due: null }));
       close(); await loadAll(); T.aid = T.assignments[0] && T.assignments[0].id; T.tab = 'result'; route('worksheets'); DT.toast(cls().name + '에 보냈어요. 학생 화면에 바로 나타나요.');
     }
     /* 직접 만들기·고치기: 자동으로 만든 것에서 시작해 빈칸·순서·문제를 바꾼다 */
@@ -304,7 +304,7 @@
       const w = DT.ws.build(T.tb, [...picked], kind); if (!w.items.length) return DT.toast('만들 문항이 없어요.', 'bad');
       const d = new Date(); if (due === 'tomorrow') d.setDate(d.getDate() + 1); if (due === 'week') d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0);
       if (kind === 'group') w.groups = await DT.data.getGroups(T.classId);
-      await DT.data.createAssignment(Object.assign(w, { classId: T.classId, courseId: C.courseId, due: d.getTime() }));
+      await DT.data.createAssignment(Object.assign(w, { classId: T.classId, courseId: C.courseId, due: null }));
       close(); await loadAll(); T.aid = T.assignments[0] && T.assignments[0].id; T.tab = 'result'; route('worksheets'); DT.toast(cls().name + '에 보냈어요. 학생 화면에 바로 나타나요.');
     } }] });
   }
@@ -317,7 +317,7 @@
     if (!n) return DT.toast('이 범위에서 틀린 문제가 있는 학생이 없어요.');
     if (!(await DT.confirm('복습 보내기', '틀린 문제가 있는 ' + n + '명에게 각자 틀린 문제를 최대 3개씩 다시 보내요. 보낼까요?', '보내기'))) return;
     const d = new Date(); d.setDate(d.getDate() + 2); d.setHours(23, 59, 0, 0);
-    await DT.data.createAssignment({ title: '복습 · 지난번에 틀린 문제', kind: 'review', classId: T.classId, courseId: C.courseId, perStudent: per, items: [], scope: [...scopeSet], due: d.getTime() });
+    await DT.data.createAssignment({ title: '복습 · 지난번에 틀린 문제', kind: 'review', classId: T.classId, courseId: C.courseId, perStudent: per, items: [], scope: [...scopeSet], due: null });
     await loadAll(); route(T.view); DT.toast(n + '명에게 복습 학습지를 보냈어요.');
   }
 

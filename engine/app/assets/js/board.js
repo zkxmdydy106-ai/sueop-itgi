@@ -475,7 +475,7 @@
     [['today', '오늘 수업 끝까지'], ['tomorrow', '내일까지'], ['week', '일주일 뒤까지']].forEach(([v, t]) => { const b = DT.el('button', { class: 'chip', type: 'button', 'aria-pressed': v === due ? 'true' : 'false' }, t); b.onclick = () => { due = v; DT.$$('.chip', dues).forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); }; dues.append(b); });
     const prev = DT.el('div', { style: { fontSize: '16px', color: 'var(--ink-2)', padding: '12px 16px', borderRadius: '12px', background: 'var(--paper-2)' } });
     const lab = (t, n) => DT.el('div', { class: 'field' }, DT.el('span', null, t), n);
-    wrap.append(lab('무엇을', kinds), lab('어디까지', scopes), lab('언제까지', dues), prev);
+    wrap.append(lab('무엇을', kinds), lab('어디까지', scopes), prev);   /* 기한 없음 (선생님 결정 2026-10-19) */
     function ids() { if (scope === 'now') return [s.id]; if (scope === 'upto') return sub.screens.slice(0, s._local + 1).map((x) => x.id); return sub.screens.map((x) => x.id); }
     function paint() { const w = DT.ws.build(S.tb, ids(), kind); const n = w.items.length; prev.innerHTML = n ? '<b style="color:var(--ink)">' + n + '문항</b>이 만들어져요 — ' + DT.esc(w.items.slice(0, 4).map((i) => DT.plain(i.label)).join(', ')) + (n > 4 ? ' …' : '') : '이 범위에는 이 종류로 만들 내용이 없어요. 범위를 넓히거나 다른 종류를 골라 주세요.'; }
     paint();
@@ -484,7 +484,7 @@
       const bad = DT.ws.check ? DT.ws.check(w) : ''; if (bad) return DT.toast(bad, 'bad');
       const d = new Date(); if (due === 'today') d.setHours(23, 59, 0, 0); else if (due === 'tomorrow') { d.setDate(d.getDate() + 1); d.setHours(23, 59, 0, 0); } else { d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0); }
       if (w.items.some((it) => it.type === 'group') && !w.groups) w.groups = await DT.data.getGroups(S.classId);
-      const a = await DT.data.createAssignment(Object.assign(w, { classId: S.classId, courseId: C.courseId, due: d.getTime() }));
+      const a = await DT.data.createAssignment(Object.assign(w, { classId: S.classId, courseId: C.courseId, due: null }));
       if (S.lesson) { S.lesson.assignments.push(a.id); DT.store.set('board.lesson.' + C.courseId + '.' + S.classId, S.lesson); }
       close(); DT.toast(S.className + '에 보냈어요. 학생 화면에 바로 나타나요.');
     }
