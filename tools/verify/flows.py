@@ -224,6 +224,13 @@ async def main():
               for (const ans of [false, true]) { const el = DT.ws.paper(w, { answers: ans, sections: true }); document.body.append(el); const m = el.innerText.match(RX); if (m) bad.push(u.title + (ans ? ' 정답' : ' 학생용') + ': ' + el.innerText.slice(Math.max(0, m.index - 30), m.index + 40).replace(/\n/g, ' ')); el.remove(); } } }
           return bad.slice(0, 8); })()""")
         for r in raw: errs.append('[인쇄] 글자로 찍힌 수식·태그: ' + r)
+        async def print_preview():
+            await t.evaluate("(async () => { const tb = DT.render.flatten(await DT.data.getCourse()); const u = tb._subunits[0]; DT.ws.print(DT.ws.build(tb, u.screens.map((x) => x.id), 'concept'), '', {}); })()")
+            await t.wait_for_selector('.wspv-sheet .wsp', timeout=8000)
+            await t.click('.wspv-bar .chip >> nth=1'); await t.wait_for_timeout(300)
+            if not await t.locator('.wspv-sheet .wsp').count(): raise Exception('미리보기에 학습지가 안 보임')
+            await t.click('.wspv-bar >> text=닫기')
+        await step('인쇄 미리보기', print_preview(), t, '선생님')
         # 실제로 일이 일어났는지 (아무것도 못 눌렀는데 '오류 없음'이 되지 않게)
         stat = await t.evaluate("(async () => { const a = await DT.data.listAssignments({}); const s = await DT.data.listSubmissions({}); const l = await DT.data.listLessons({}); return { 학습지: a.length, 제출: s.filter(x => x.submittedAt).length, 일지: l.length }; })()")
         print('만든 것:', stat)

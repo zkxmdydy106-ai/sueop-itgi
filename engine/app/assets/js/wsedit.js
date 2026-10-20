@@ -365,6 +365,53 @@
       if (!left) return fire();
       const t = setTimeout(fire, 2500); imgs.forEach((im) => { im.onload = im.onerror = () => { if (--left === 0) { clearTimeout(t); fire(); } }; });
     };
-    DT.modal({ title: popt.sections ? '문제 모음 인쇄 · PDF' : '학습지 인쇄', body: '<p>' + (popt.sections ? '이 범위의 교과서 문제와 변형 문제 ' + w.items.length + '개를 개념별로 모았어요. ' : '종이로 나눠 줄 학습지예요. ') + '인쇄 창에서 「PDF로 저장」을 고르면 PDF 파일이 돼요.</p>', actions: [{ label: '닫기' }, { label: '정답 포함 (선생님용)', icon: 'print', onClick: (c) => { c(); go(true); } }, { label: '학생용 인쇄', kind: 'ink', icon: 'print', onClick: (c) => { c(); go(false); } }] });
+    W.preview(w, clsName, popt, go);
+  };
+
+  /* 인쇄 미리보기: 종이(A4) 그대로 화면에 — 반 양식(printCss)까지 적용. 학생용 ↔ 정답 포함을 바꿔 보고 「인쇄」 */
+  let pvCss = null;
+  async function previewCss() {
+    const C = DT.config;
+    if (C.printCss && !document.getElementById('printCss')) {
+      const l = DT.el('link', { rel: 'stylesheet', id: 'printCss', href: C.printCss + (C.printCss.includes('?') ? '&' : '?') + 'v=' + Date.now() });
+      await new Promise((ok) => { l.onload = l.onerror = ok; document.head.append(l); setTimeout(ok, 3000); });
+      pvCss = null;
+    }
+    if (pvCss) return pvCss;
+    const out = []; const page = { top: 15, right: 15, bottom: 15, left: 15 };
+    const mm = (v) => { const m = String(v || '').match(/([\d.]+)\s*(mm|cm|in|px|pt)?/); if (!m) return null; const n = +m[1]; return m[2] === 'cm' ? n * 10 : m[2] === 'in' ? n * 25.4 : m[2] === 'px' ? n * 0.2646 : m[2] === 'pt' ? n * 0.3528 : n; };
+    const walk = (rules, inPrint) => Array.from(rules || []).forEach((r) => {
+      if (r.type === 4) return walk(r.cssRules, inPrint || /print/.test(r.media.mediaText));   /* @media */
+      if (!inPrint) return;
+      if (r.type === 6) { ['top', 'right', 'bottom', 'left'].forEach((k) => { const v = mm(r.style.getPropertyValue('margin-' + k)); if (v != null) page[k] = v; }); return; }   /* @page */
+      if (r.type === 1 && /\.wsp/.test(r.selectorText) && !/is-printing|print-area|^\s*(html|body)/.test(r.selectorText)) out.push(r.selectorText.split(',').map((x) => '.wspv ' + x.trim()).join(', ') + ' {' + r.style.cssText + '}');
+    });
+    Array.from(document.styleSheets).forEach((sh) => { try { walk(sh.cssRules, false); } catch (e) { /* 다른 출처 글꼴 CSS */ } });
+    pvCss = { css: out.join('\n'), page };
+    return pvCss;
+  }
+  W.preview = async function (w, clsName, popt, go) {
+    popt = popt || {};
+    const { css, page } = await previewCss();
+    let answers = false;
+    const scrim = DT.el('div', { class: 'wspv-scrim', role: 'dialog', 'aria-modal': 'true', 'aria-label': '인쇄 미리보기' });
+    const style = DT.el('style', null, css + '\n.wspv .wspc-frame { position: absolute !important; }');
+    const desk = DT.el('div', { class: 'wspv-desk' });
+    const sheet = DT.el('div', { class: 'wspv wspv-sheet' });
+    sheet.style.padding = page.top + 'mm ' + page.right + 'mm ' + page.bottom + 'mm ' + page.left + 'mm';
+    const seg = DT.el('div', { class: 'chips', role: 'group', 'aria-label': '학생용 · 정답 포함' });
+    const verBtn = (v, t) => { const b = DT.el('button', { class: 'chip', type: 'button', 'aria-pressed': v === answers ? 'true' : 'false' }, t); b.onclick = () => { answers = v; DT.$$('.chip', seg).forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); paint(); }; return b; };
+    seg.append(verBtn(false, '학생용'), verBtn(true, '정답 포함 (선생님용)'));
+    const printB = DT.el('button', { class: 'btn btn--ink', type: 'button', html: DT.icon('print') + '인쇄' });
+    const closeB = DT.el('button', { class: 'btn', type: 'button' }, '닫기');
+    const bar = DT.el('div', { class: 'wspv-bar' }, DT.el('div', { class: 'wspv-t' }, DT.el('b', null, popt.sections ? '문제 모음 · 인쇄 미리보기' : '학습지 · 인쇄 미리보기'), DT.el('span', null, 'A4 · 인쇄 창에서 「PDF로 저장」을 고르면 PDF가 돼요')), seg, closeB, printB);
+    desk.append(sheet); scrim.append(style, bar, desk); document.body.append(scrim);
+    function paint() { sheet.innerHTML = ''; sheet.append(W.paper(w, { answers, cls: clsName, sections: popt.sections })); fit(); }
+    function fit() { const k = Math.min(1, (desk.clientWidth - 40) / (210 * 3.7795)); sheet.style.zoom = k; }
+    const close = () => { scrim.remove(); removeEventListener('resize', fit); document.removeEventListener('keydown', onKey, true); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    closeB.onclick = close; printB.onclick = () => { close(); go(answers); };
+    addEventListener('resize', fit); document.addEventListener('keydown', onKey, true);
+    paint();
   };
 })();

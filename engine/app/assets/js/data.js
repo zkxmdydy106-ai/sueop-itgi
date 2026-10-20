@@ -55,6 +55,8 @@
       subs.push(s); setTimeout(s.fire, 0);
       return () => { const i = subs.indexOf(s); if (i >= 0) subs.splice(i, 1); };
     }
+    const TABUSER = /[?&]tab=1\b/.test(location.search);
+    const TABKEY = 'dt.demo.user.' + location.pathname.split('/').pop();   /* 같은 탭 안의 틀끼리도 칠판·학생·선생님 화면이 따로 */
     const api = {
       mode: 'demo',
       async init() {
@@ -66,9 +68,10 @@
       },
       async resetDemo() { DT.store.del(KEY); DT.store.keys('ink.').forEach((k) => DT.store.del(k)); db = null; await api.init(); changed('all'); },
       /* 로그인 */
-      user() { return DT.store.get('demo.user', null); },
-      async signIn(as) { DT.store.set('demo.user', as); return as; },
-      async signOut() { DT.store.del('demo.user'); },
+      /* ?tab=1 이면 이 창(탭·틀)만의 로그인 — 안내 페이지에서 칠판·학생 화면을 나란히 띄울 때 */
+      user() { if (TABUSER) { try { const v = sessionStorage.getItem(TABKEY); return v ? JSON.parse(v) : null; } catch (e) { return null; } } return DT.store.get('demo.user', null); },
+      async signIn(as) { if (TABUSER) { try { sessionStorage.setItem(TABKEY, JSON.stringify(as)); } catch (e) {} return as; } DT.store.set('demo.user', as); return as; },
+      async signOut() { if (TABUSER) { try { sessionStorage.removeItem(TABKEY); } catch (e) {} return; } DT.store.del('demo.user'); },
       async listStudentsForPicker() { return col('roster').slice().sort((a, b) => a.no.localeCompare(b.no)); },
       /* 교과서 */
       async getCourse() {
