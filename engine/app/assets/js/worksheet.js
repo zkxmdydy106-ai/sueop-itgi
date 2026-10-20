@@ -33,7 +33,7 @@
   W.fields = ['공학·기술', '자연과학', '의약·보건', 'IT·인공지능', '경영·경제', '인문·사회', '교육', '예술·디자인', '체육·스포츠'];
 
   const screensIn = (tb, ids) => ids.map((id) => tb._byId[id]).filter(Boolean);
-  const blocksIn = (s) => { const out = []; (s.blocks || []).forEach((b) => { out.push(b); if (b.cols) b.cols.forEach((c) => c.forEach((bb) => out.push(bb))); }); return out; };
+  const blocksIn = (s) => { const out = []; (s.blocks || []).forEach((b) => { out.push(b); if (b.t === 'cols' && b.cols) b.cols.forEach((c) => c.forEach((bb) => out.push(bb))); }); return out; };
   const subsOf = (tb, ids) => Array.from(new Set(screensIn(tb, ids).map((s) => s._sub)));
   const allTerms = (tb) => { const set = new Set(); tb._screens.forEach((s) => blocksIn(s).forEach((b) => DT.terms(b.x).forEach((t) => set.add(t)))); return [...set]; };
 

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>수업 화면 · 수업잇기</title>
+<!-- 수업잇기 엔진 (가벼운 길) — 아래 주소는 그대로 둔다 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/vendor/fonts/fonts.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/css/tokens.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/css/content.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/css/ink.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/css/board.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/css/lab.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/css/lite.css">
+</head>
+<body>
+<script>
+/* ===== 여기부터 수업 내용 (AI가 이 부분만 바꾼다) ===== */
+window.LESSON = {
+  "title": "벡터의 실수배",
+  "unit": "예시 수업 (직접 만든 예)",
+  "source": "직접 만든 예시",
+  "screens": [
+    { "id": "s1", "kind": "open", "step": "생각 열기", "chip": "생각 열기", "title": "같은 방향, 다른 크기",
+      "blocks": [
+        { "t": "p", "x": "바람이 같은 방향으로 두 배 세게 불면, 바람을 나타내는 화살표는 어떻게 그려야 할까?" },
+        { "t": "note", "label": "생각해 보기", "x": "방향은 그대로, **길이만** 바뀐다.", "r": 1 }
+      ] },
+    { "id": "s2", "kind": "concept", "step": "개념", "chip": "실수배", "title": "벡터의 실수배",
+      "blocks": [
+        { "t": "cols", "ratio": [5, 4], "cols": [
+          [ { "t": "def", "label": "정의", "x": "실수 $k$와 벡터 $\\vec a$에 대하여 $k\\vec a$는\n$k>0$이면 $\\vec a$와 **같은 방향**, $k<0$이면 **반대 방향**이고 크기는 $|k||\\vec a|$인 벡터이다." },
+            { "t": "note", "label": "참고", "x": "$k=0$이면 $0\\vec a=\\vec 0$", "r": 1 } ],
+          [ { "t": "lab", "lab": "vector-ops", "label": "모형으로 보기", "desc": "k를 바꾸며 ka 보기", "props": { "mode": "scalar", "a": [3, 2], "k": 2, "modes": ["scalar"] } } ]
+        ] }
+      ] },
+    { "id": "s3", "kind": "problem", "step": "예제", "chip": "예제", "title": "실수배 구하기",
+      "blocks": [
+        { "t": "ex", "label": "예제", "q": "$|\\vec a|=3$일 때, $|-2\\vec a|$의 값을 구하시오.", "sol": ["$|-2\\vec a|=|-2||\\vec a|$", "$=2\\times 3$", "$=6$"], "ans": "6" },
+        { "t": "prob", "label": "문제", "q": "$|\\vec b|=5$일 때, $\\left|\\dfrac{1}{5}\\vec b\\right|$의 값을 구하시오.", "ans": "1" }
+      ] },
+    { "id": "s4", "kind": "summary", "step": "정리", "chip": "정리", "title": "한눈에 정리",
+      "blocks": [
+        { "t": "viz", "kind": "compare", "title": "k의 부호에 따라", "cols": [ { "title": "$k>0$", "items": ["같은 방향", "크기 $k|\\vec a|$"] }, { "title": "$k<0$", "items": ["반대 방향", "크기 $|k||\\vec a|$"] } ] }
+      ] }
+  ]
+};
+/* ===== 여기까지 ===== */
+window.DT_CONFIG = { mode: 'demo', assetBase: 'https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/' };
+</script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/vendor/katex/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/core.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/render.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/viz.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/ink.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/lab.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/labs/vector-ops.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/labs/vector-coord.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/labs/vector-box.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/labs/projection.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/labs/gas.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/labs/orbit.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/labs/terrain.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/zkxmdydy106-ai/sueop-itgi@lite-1/engine/app/assets/js/lite.js"></script>
+</body>
+</html>

@@ -22,10 +22,10 @@
     })(tb.units, []);
     tb._subunits = subunits; tb._screens = screens;
     tb._byId = {}; screens.forEach((s) => (tb._byId[s.id] = s));
-    tb._blocks = {}; screens.forEach((s) => (s.blocks || []).forEach((b, i) => { b._screen = s; b.id = b.id || s.id + '.' + i; tb._blocks[b.id] = b; if (b.cols) b.cols.forEach((col, ci) => col.forEach((bb, bi) => { bb._screen = s; bb.id = bb.id || b.id + '.' + ci + '.' + bi; tb._blocks[bb.id] = bb; })); }));
+    tb._blocks = {}; screens.forEach((s) => (s.blocks || []).forEach((b, i) => { b._screen = s; b.id = b.id || s.id + '.' + i; tb._blocks[b.id] = b; if (b.t === 'cols' && b.cols) b.cols.forEach((col, ci) => col.forEach((bb, bi) => { bb._screen = s; bb.id = bb.id || b.id + '.' + ci + '.' + bi; tb._blocks[bb.id] = bb; })); }));
     /* 문제 옆 단의 교과서 그림 → 그 문제의 그림(_figs). "오른쪽 그림" 문제가 여럿이면 '그림'이 나오는 문제에만 */
     screens.forEach((s) => (s.blocks || []).forEach((b) => {
-      if (!b.cols) return;
+      if (b.t !== 'cols' || !b.cols) return;
       b.cols.forEach((col, ci) => {
         const qs = col.filter((x) => x.t === 'prob' || x.t === 'ex'); if (!qs.length) return;
         const figs = b.cols.filter((c, cj) => cj !== ci).flat().filter((x) => x.t === 'fig' && (x.src || x.svg));
@@ -151,7 +151,7 @@
   R.applyEdits = function (s, e) {
     if (!e) return s;
     const o = Object.assign({}, s); let bs = (s.blocks || []).slice();
-    const tx = (b) => { let o2 = e.text && e.text[b.id] != null ? Object.assign({}, b, { x: e.text[b.id], _edited: true }) : b; if (b.cols) o2 = Object.assign({}, o2, { cols: b.cols.map((c) => c.map(tx)) }); return o2; };
+    const tx = (b) => { let o2 = e.text && e.text[b.id] != null ? Object.assign({}, b, { x: e.text[b.id], _edited: true }) : b; if (b.t === 'cols' && b.cols) o2 = Object.assign({}, o2, { cols: b.cols.map((c) => c.map(tx)) }); return o2; };
     bs = bs.map(tx);   /* 두 단(cols) 안의 문단도 */
     (e.notes || []).forEach((n) => bs.push({ t: 'note', id: n.id, x: n.x, label: '선생님 메모', _mine: true }));
     if (e.order && e.order.length) { const pos = (b) => { const i = e.order.indexOf(b.id); return i < 0 ? 1e6 + bs.indexOf(b) : i; }; bs = bs.slice().sort((a, b) => pos(a) - pos(b)); }

@@ -172,7 +172,7 @@ async def main():
         await step('화면 고치기', screen_edit(), bd, '칠판')
         # 탐구 그림: 칠판에서 모형 열기 → 「학생과 같이」 → 값 모으기 → 막대 눌러 칠판에 넣기 → 끝내기
         lab = await bd.evaluate("""(async () => { const tb = DT.render.flatten(await DT.data.getCourse()); let f = null;
-          const walk = (bs) => (bs || []).forEach((x) => { if (!f && x.t === 'lab') f = x; if (x.cols) x.cols.forEach(walk); });
+          const walk = (bs) => (bs || []).forEach((x) => { if (!f && x.t === 'lab') f = x; if (x.t === 'cols' && x.cols) x.cols.forEach(walk); });
           tb._screens.forEach((sc) => walk(sc.blocks)); return f ? JSON.stringify({ lab: f.lab, props: f.props || {}, title: f.title || f.label, ask: f.ask }) : null; })()""")
         if lab:
             async def lab_live():

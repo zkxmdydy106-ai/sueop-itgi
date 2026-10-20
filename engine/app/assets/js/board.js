@@ -530,7 +530,7 @@
   }
   function openAsk() {
     const s = screens()[S.idx];
-    const probs = []; (s.blocks || []).forEach((b) => { if (b.t === 'prob' || b.t === 'ex') probs.push(b); if (b.cols) b.cols.forEach((c) => c.forEach((bb) => { if (bb.t === 'prob' || bb.t === 'ex') probs.push(bb); })); });
+    const probs = []; (s.blocks || []).forEach((b) => { if (b.t === 'prob' || b.t === 'ex') probs.push(b); if (b.t === 'cols' && b.cols) b.cols.forEach((c) => c.forEach((bb) => { if (bb.t === 'prob' || bb.t === 'ex') probs.push(bb); })); });
     const wrap = DT.el('div', { style: { display: 'grid', gap: '16px' } });
     if (probs.length) {
       const list = DT.el('div', { class: 'chips' });
@@ -662,7 +662,7 @@
     document.body.classList.add('is-editing-screen');
     const cur = () => DT.render.applyEdits(s, e);
     const ids = () => cur().blocks.map((b) => b.id);   /* 자리 옮기기는 맨 바깥 상자끼리 */
-    const all = () => { const out = []; cur().blocks.forEach((b) => { out.push(b); (b.cols || []).forEach((c) => c.forEach((x) => out.push(x))); }); return out; };
+    const all = () => { const out = []; cur().blocks.forEach((b) => { out.push(b); (b.t === 'cols' ? b.cols || [] : []).forEach((c) => c.forEach((x) => out.push(x))); }); return out; };
     const blockOf = (id) => all().find((b) => b.id === id);
     const touch = () => { dirty = true; paint(); };
     function paint() {
