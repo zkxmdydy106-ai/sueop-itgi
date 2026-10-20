@@ -1,0 +1,134 @@
+/* 3D·실험실 — 전체 화면. 모형이 주인공, 조절 막대는 오른쪽 한 곳에. */
+.lab { position: fixed; inset: 0; z-index: 7000; background: var(--paper); animation: fade .2s var(--ease); --lab-ui: clamp(14px, 0.92vw, 20px); font-size: var(--lab-ui); }
+.lab.is-dark { background: #05070B; }
+.lab__view { position: absolute; inset: 0; }
+.lab__view canvas { display: block; touch-action: none; }
+.lab__labels { position: absolute; inset: 0; pointer-events: none; }
+.lab__inkhost { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.lab__inkhost .ink-layer, .lab__inkhost .ink-laser { position: absolute; inset: 0; }
+.lab__inkhost .ink-layer.is-live { pointer-events: auto; }
+
+.lab__bar { position: absolute; left: 1.2em; right: 1.2em; top: 1em; display: flex; align-items: center; gap: .6em; z-index: 3; pointer-events: none; }
+.lab__bar > * { pointer-events: auto; }
+.lab__title { margin: 0 auto 0 0; font-family: var(--f-head); font-weight: 400; font-size: 1.7em; background: var(--white); padding: .25em .9em; border-radius: var(--r-pill); box-shadow: var(--lift); letter-spacing: -0.01em; }
+.lab__btn, .lab__close { display: inline-flex; align-items: center; gap: .45em; height: 2.7em; padding: 0 1.1em; border-radius: var(--r-pill); background: var(--white); font-weight: 750; box-shadow: var(--lift); }
+.lab__btn .ic, .lab__close .ic { width: 1.3em; height: 1.3em; }
+.lab__btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.lab__close { background: var(--ink); color: var(--paper); }
+
+.lab__panel { position: absolute; right: 1.2em; top: 5.2em; bottom: 1.2em; width: 19em; display: flex; flex-direction: column; gap: .8em; z-index: 3; overflow: hidden; }
+.lab__panel > * { flex: none; }
+.lab__group { background: var(--white); border-radius: 1.1em; padding: .9em 1em; box-shadow: var(--lift); display: grid; gap: .7em; }
+.lab__gtitle { font-weight: 800; font-size: .95em; color: var(--ink-2); }
+.lab__slider { display: grid; gap: .35em; }
+.lab__slabel { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; }
+.lab__val { font-family: var(--f-head); font-size: 1.35em; color: var(--accent-ink); }
+.lab__slider input { -webkit-appearance: none; appearance: none; width: 100%; height: 2.2em; background: transparent; margin: 0; }
+.lab__slider input::-webkit-slider-runnable-track { height: .5em; border-radius: 1em; background: linear-gradient(90deg, var(--accent) var(--p), var(--paper-3) var(--p)); }
+.lab__slider input::-moz-range-track { height: .5em; border-radius: 1em; background: linear-gradient(90deg, var(--accent) var(--p), var(--paper-3) var(--p)); }
+.lab__slider input::-webkit-slider-thumb { -webkit-appearance: none; width: 1.7em; height: 1.7em; margin-top: -.6em; border-radius: 50%; background: var(--white); border: .2em solid var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.lab__slider input::-moz-range-thumb { width: 1.4em; height: 1.4em; border-radius: 50%; background: var(--white); border: .2em solid var(--accent); }
+.lab__toggle { display: flex; align-items: center; gap: .6em; min-height: 2.4em; font-weight: 700; text-align: left; }
+.lab__tdot { width: 2.4em; height: 1.4em; border-radius: 1em; background: var(--paper-3); position: relative; flex: none; transition: background-color .15s; }
+.lab__tdot::after { content: ''; position: absolute; left: .2em; top: .2em; width: 1em; height: 1em; border-radius: 50%; background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s var(--ease); }
+.lab__toggle[aria-pressed="true"] .lab__tdot { background: var(--ink); }
+.lab__toggle[aria-pressed="true"] .lab__tdot::after { transform: translateX(1em); }
+.lab__seg { display: flex; padding: .25em; border-radius: var(--r-pill); background: var(--paper-2); gap: .2em; }
+.lab__seg button { flex: 1; min-height: 2.3em; border-radius: var(--r-pill); font-weight: 750; color: var(--ink-2); }
+.lab__seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.lab__action { display: inline-flex; align-items: center; justify-content: center; gap: .4em; min-height: 2.5em; padding: 0 1em; border-radius: var(--r-pill); background: var(--paper-2); font-weight: 750; border: 1px solid var(--line); }
+.lab__action:hover { background: var(--paper-3); }
+.lab__read { display: flex; justify-content: space-between; align-items: baseline; gap: .6em; }
+.lab__rlabel { color: var(--ink-2); font-weight: 650; }
+.lab__rval { font-family: var(--f-head); font-weight: 400; font-size: 1.3em; }
+.lab__read--big .lab__rval { font-size: 1.9em; color: var(--accent-ink); }
+.lab__note { margin: 0; font-size: .98em; color: var(--ink-2); line-height: 1.55; }
+.lab__chart svg { width: 100%; height: auto; display: block; }
+.lab__row { display: flex; gap: .4em; flex-wrap: wrap; }
+
+.lab__label { font-family: var(--f-text); font-weight: 800; font-size: clamp(16px, 1.4vw, 28px); color: var(--ink); text-shadow: 0 0 6px var(--paper), 0 0 2px var(--paper), 0 0 10px var(--paper); white-space: nowrap; pointer-events: none; }
+.lab__label.is-serif { font-family: 'Times New Roman', Georgia, serif; font-style: italic; font-weight: 600; font-size: clamp(20px, 1.8vw, 36px); }
+.lab__label.is-serif.is-pt { font-style: normal; font-weight: 500; }   /* 점 이름(A, B, …)은 교과서처럼 똑바로, 벡터 기호만 기울임 */
+.lab__label.is-sub { font-family: var(--f-text); font-style: normal; font-weight: 700; font-size: clamp(13px, 1vw, 19px); color: var(--ink-2); }
+.lab__label.is-tag { font-family: var(--f-text); font-style: normal; font-weight: 800; font-size: clamp(13px, .95vw, 18px); color: var(--paper); background: var(--ink); padding: .2em .7em; border-radius: var(--r-pill); text-shadow: none; }
+.lab.is-dark .lab__label { color: #F2F4F7; text-shadow: 0 0 8px #000, 0 0 3px #000; }
+
+.lab__fig { position: absolute; left: 1.2em; top: 5.2em; width: 15em; margin: 0; background: var(--white); border-radius: 1em; padding: .6em .6em .4em; box-shadow: var(--lift); z-index: 3; }
+.lab__fig svg, .lab__fig img { width: 100%; height: auto; display: block; }
+.lab__fig figcaption { font-size: .72em; color: var(--ink-2); font-weight: 700; text-align: center; padding-top: .2em; }
+.lab__hint { position: absolute; left: 50%; bottom: 1.4em; transform: translateX(-50%); background: rgba(23,25,27,.82); color: #fff; padding: .55em 1.2em; border-radius: var(--r-pill); font-weight: 650; z-index: 3; transition: opacity .6s; pointer-events: none; }
+.lab__hint.is-out { opacity: 0; }
+.lab__ink { position: absolute; left: 1.2em; bottom: 1.2em; z-index: 4; width: 9em; height: 3.6em; }
+.lab__ink .inkbar__main { height: 2.9em; font-size: .95em; box-shadow: var(--lift); background: var(--white); }
+.lab__ink .inkbar__tool { width: 2.6em; height: 2.6em; }
+.lab__ink .inkbar__tool .ic { width: 1.35em; height: 1.35em; }
+
+@media (max-width: 820px) {
+  .lab__panel { left: 1em; right: 1em; top: auto; bottom: 4.6em; width: auto; max-height: 42%; display: grid; grid-template-columns: 1fr 1fr; align-content: end; }
+  .lab__fig { width: 9em; }
+  .lab__title { font-size: 1.25em; }
+  .lab__btn span, .lab__close span { display: none; }
+}
+
+/* 탐구 그림 같이 하기 — 칠판: 학생 값 모으기. 5m 뒤에서 읽히게 글자는 px로 크게, 분홍은 '가장 많이'에만 */
+.lab__btn--live[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.lab__livedot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: labpulse 1.6s ease-in-out infinite; }
+.lablive { position: absolute; left: 20px; top: 92px; bottom: 20px; width: 460px; z-index: 4; display: flex; flex-direction: column; gap: 14px; padding: 22px 22px 18px; background: var(--white); border-radius: 24px; box-shadow: var(--lift); font-size: 18px; }
+.lab.has-live .lab__view { left: 500px; }
+.lab.has-live .lab__fig { display: none; }
+.lablive__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lablive__live { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; color: var(--ink); font-size: 18px; }
+.lablive__live i { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); animation: labpulse 1.6s ease-in-out infinite; }
+.lablive.is-done .lablive__live { color: var(--ink-3); }
+.lablive.is-done .lablive__live i { background: var(--ink-3); animation: none; }
+.lablive__count { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+.lablive__count small { font-size: 16px; font-weight: 700; color: var(--ink-2); }
+.lablive__count b { font-family: var(--f-head); font-size: 44px; line-height: 1; font-weight: 400; }
+.lablive__count span { font-size: 18px; color: var(--ink-3); font-weight: 700; }
+.lablive__q { margin: 0; font-family: var(--f-head); font-weight: 400; font-size: 28px; line-height: 1.3; word-break: keep-all; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.lablive__list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 20px; overflow: auto; }
+.lablive__sl { flex: 1; display: flex; flex-direction: column; min-height: 260px; }
+.lablive__slh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.lablive__slh b { font-size: 22px; }
+.lablive__slh b small { font-size: 18px; font-weight: 700; color: var(--ink-2); }
+.lablive__slh span { color: var(--ink-2); font-size: 16px; font-weight: 700; white-space: nowrap; }
+.lablive__slh em { font-style: normal; font-weight: 800; color: var(--ink); font-size: 20px; }
+.lablive__empty { margin: 0; padding: 24px; border-radius: 14px; background: var(--paper-2); color: var(--ink-2); font-size: 18px; text-align: center; }
+.lablive__cols { flex: 1; min-height: 180px; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 6px; align-items: end; }
+.lablive__col { height: 100%; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 6px; padding: 4px 2px; border-radius: 12px; min-width: 0; }
+.lablive__col:hover { background: var(--paper-2); }
+.lablive__col:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.lablive__n { font-family: var(--f-head); font-size: 30px; line-height: 1; color: var(--ink-2); }
+.lablive__bar2 { width: 100%; max-width: 64px; display: flex; align-items: flex-end; height: 100%; }
+.lablive__fill2 { display: block; width: 100%; border-radius: 10px 10px 4px 4px; background: color-mix(in srgb, var(--ink) 22%, var(--paper-2)); transition: height .45s var(--ease); }
+.lablive__col.is-top .lablive__fill2 { background: var(--accent); }
+.lablive__col.is-top .lablive__n { color: var(--accent); }
+.lablive__v { font-family: var(--f-head); font-size: 28px; line-height: 1.1; color: var(--ink); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: grid; justify-items: center; gap: 4px; }
+.lablive__col.is-now .lablive__fill2 { outline: 3px solid var(--ink); outline-offset: 2px; }
+.lablive__col.is-now .lablive__v::after { content: '칠판'; padding: 2px 10px; border-radius: var(--r-pill); background: var(--ink); color: var(--paper); font-family: var(--f-text); font-size: 14px; font-weight: 800; }
+.lablive__tip { margin: 8px 0 0; color: var(--ink-2); font-size: 16px; }
+.lablive__foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lablive__foot .lab__action { min-height: 56px; justify-content: center; font-size: 18px; }
+.lablive__demo { justify-self: start; background: none; color: var(--ink-3); text-decoration: underline; font-size: 15px; padding: 0; }
+.lab__action--ink { background: var(--ink); color: var(--paper); }
+.lab__slider.is-flash { animation: labflash .9s var(--ease); border-radius: 10px; }
+@keyframes labflash { 0% { background: color-mix(in srgb, var(--accent) 28%, transparent); } 100% { background: transparent; } }
+@keyframes labpulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.75); } }
+
+/* 학생: 선생님 질문 카드 — 조절 막대 바로 위 (질문과 움직일 막대가 붙어 있게) */
+.labmission { padding: 16px 18px; border-radius: 20px; background: var(--white); box-shadow: var(--lift); display: grid; gap: 8px; font-size: 16px; }
+.labmission__kick { font-size: 14px; font-weight: 800; color: var(--accent); }
+.labmission__q { margin: 0; font-family: var(--f-head); font-size: 21px; font-weight: 400; line-height: 1.35; word-break: keep-all; }
+.labmission__stat { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink-2); font-weight: 700; }
+.labmission__stat .ic { width: 18px; height: 18px; flex: none; }
+.labmission__stat.is-sent { color: var(--ok); }
+.labmission__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; animation: labpulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .lablive__live i, .labmission__dot, .lab__livedot, .lab__slider.is-flash { animation: none; } .lablive__fill2 { transition: none; } }
+@media (max-width: 1500px) { .lablive { width: 400px; } .lab.has-live .lab__view { left: 440px; } .lablive__q { font-size: 24px; } }
+@media (max-width: 900px) {
+  .lab.has-live .lab__view { left: 0; }
+  .lablive { left: 12px; right: 12px; width: auto; top: 72px; bottom: auto; max-height: 50%; font-size: 16px; }
+  .lablive__sl { min-height: 200px; }
+  .labmission { grid-column: 1 / -1; padding: 12px 14px; }
+  .labmission__q { font-size: 18px; }
+}

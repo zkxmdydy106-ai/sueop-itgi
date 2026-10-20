@@ -1,0 +1,48 @@
+/* 판서 — 모든 화면 공통 */
+/* 판서 면 공통 */
+.ink-layer { pointer-events: none; touch-action: none; }
+.ink-layer.is-live { pointer-events: auto; cursor: crosshair; }
+.ink-laser { pointer-events: none; }
+/* 판서 막대 (접힘: 판서 단추 하나) */
+.inkbar { position: absolute; left: 0; bottom: 0; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 12px; z-index: 30; }
+.inkbar__main { height: 64px; padding: 0 26px 0 20px; border-radius: var(--r-pill); background: var(--paper-2); border: 1.5px solid var(--line-2); font-size: 22px; font-weight: 800; display: inline-flex; align-items: center; gap: 10px; }
+.inkbar__main .ic { width: 30px; height: 30px; }
+.inkbar__main.is-drawing { background: var(--accent); color: #fff; border-color: var(--accent); }
+.inkbar__panel { display: none; flex-direction: column; align-items: center; gap: 6px; padding: 12px 10px; background: var(--white); border: 1.5px solid var(--line-2); border-radius: 26px; box-shadow: var(--lift); }
+.inkbar[data-open="true"] .inkbar__panel { display: flex; animation: fade .15s var(--ease); }
+.inkbar__tool { width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; color: var(--ink-2); }
+.inkbar__tool .ic { width: 30px; height: 30px; }
+.inkbar__tool:hover { background: var(--paper-2); color: var(--ink); }
+.inkbar__tool[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.inkbar__sep { width: 40px; height: 1px; background: var(--line); margin: 4px 0; }
+.inkbar__swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.inkbar__more { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 64px; padding: 4px 0; border-radius: 12px; font-size: 12px; font-weight: 800; color: var(--ink-2); }
+.inkbar__more .ic { width: 20px; height: 20px; }
+.inkbar__more:hover { background: var(--paper-2); color: var(--ink); }
+.inkbar__sw { width: 26px; height: 26px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--white), 0 0 0 3px var(--line-2); }
+.inkbar__sw.is-on { box-shadow: 0 0 0 3px var(--white), 0 0 0 6px var(--ink); }
+.inkbar__sizes { display: flex; gap: 6px; padding: 4px 0; }
+.inkbar__size { width: 18px; height: 30px; display: grid; place-items: center; }
+.inkbar__size::before { content: ''; width: var(--d); height: var(--d); border-radius: 50%; background: var(--ink-3); }
+.inkbar__size.is-on::before { background: var(--ink); }
+.inkbar__tool.inkbar__clear { width: 72px; height: auto; padding: 10px 0 8px; gap: 3px; display: flex; flex-direction: column; align-items: center; font-weight: 800; font-size: 15px; line-height: 1.1; color: var(--ink); background: var(--paper-2); }   /* 모두 지우기 — 글이 붙은 단추 */
+
+/* 도구 줄 접기 */
+.inkbar__mini { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 60px; padding: 6px 0; border-radius: 14px; font-size: 13px; font-weight: 800; color: var(--ink-2); }
+.inkbar__mini .ic { width: 22px; height: 22px; }
+.inkbar__mini:hover { background: var(--paper-2); color: var(--ink); }
+.inkbar[data-mini="true"] .inkbar__panel { display: none; }
+.inkbar[data-mini="true"] .inkbar__main { height: 52px; padding: 0 18px; font-size: 18px; white-space: nowrap; }
+.inkbar[data-mini="true"] .inkbar__main span::after { content: ' · 도구 펼치기'; font-weight: 600; font-size: .8em; opacity: .85; }
+
+/* 판서 색 바꾸기 창 */
+.inkcol { display: grid; gap: 14px; }
+.inkcol__hint { margin: 0; font-size: 16px; color: var(--ink-2); }
+.inkcol__slots { display: flex; gap: 12px; padding: 12px; background: var(--paper-2); border-radius: 16px; justify-content: center; }
+.inkcol__slot { width: 52px; height: 52px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--white), 0 0 0 3px var(--line-2); }
+.inkcol__slot.is-on { box-shadow: 0 0 0 4px var(--white), 0 0 0 8px var(--accent); }
+.inkcol__set { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 10px; }
+.inkcol__set b { font-size: 15px; }
+.inkcol__row { display: flex; flex-wrap: wrap; gap: 10px; }
+.inkcol__c { width: 40px; height: 40px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--white), 0 0 0 3px var(--line-2); }
+.inkcol__c:hover { transform: scale(1.1); }

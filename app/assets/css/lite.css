@@ -1,0 +1,30 @@
+/* 수업잇기 · lite.css — 서버 없는 수업 화면 한 장 (board.css 위에 얹음) */
+.lite-toc { display: grid; gap: 6px; max-height: 60vh; overflow: auto; }
+.lite-toc__i { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; text-align: left; font-size: 18px; }
+.lite-toc__i:hover { background: var(--paper-2); }
+.lite-toc__i.is-now { background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--ink); }
+.lite-toc__i span { color: var(--ink-3); font-weight: 800; }
+.lite-toc__i small { color: var(--ink-3); font-size: 14px; }
+.lite-focus { position: absolute; inset: 0; z-index: 40; background: var(--paper); }
+.lite-focus__area { position: absolute; left: 140px; right: 40px; top: 100px; bottom: 100px; font-size: 44px; }
+.lite-focus__area .ink-layer, .lite-focus__area .ink-laser { position: absolute; inset: 0; z-index: 3; }
+.lite-focus .lab__close { position: absolute; right: 28px; top: 24px; font-size: 22px; }
+.lite-focus__ink { position: absolute; left: 24px; bottom: 24px; width: 150px; height: 64px; }
+.lite-print { display: none; }
+.lite-print.is-on { display: block; position: fixed; left: -99999px; top: 0; }
+.lite-pp { position: relative; width: 1920px; height: 1080px; background: var(--paper); overflow: hidden; }
+.lite-pp .sheet { top: 0; bottom: 0; }
+.lite-src { font-size: 12px; color: #555; }
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  body.lite-body .desk { display: none !important; }
+  html, body.lite-body { background: #fff !important; }
+  .lite-pp { margin: 0 auto; box-shadow: 0 0 0 1px #ccc; }
+  .lite-print.is-on { position: static; left: 0; }
+  .lite-pp { zoom: .52; break-after: page; }
+  .lite-pp .ink-layer { display: none; }
+  /* 엔진 기본 인쇄 규칙(문서용 12pt)을 되돌려 칠판 화면 그대로 한 장에 */
+  .lite-pp .page { position: absolute; font-size: calc(var(--base, 34px) * var(--fs, 1)); }
+  .lite-pp .page__title { font-size: 64px; }
+  .lite-pp *, .lite-pp *::before, .lite-pp *::after { animation: none !important; transition: none !important; }
+}
