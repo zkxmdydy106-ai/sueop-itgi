@@ -23,6 +23,13 @@
   .pad .back { font-size: 22px; }
   .err { color: var(--accent); font-weight: 700; min-height: 1.4em; }
   small { color: var(--ink-2); font-size: 14px; }
+  [hidden] { display: none !important; }
+  .auto { display: grid; gap: 14px; justify-items: center; }
+  .auto b { font-size: 30px; }
+  .auto .bar { width: 320px; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .auto .bar i { display: block; height: 100%; width: 0; background: var(--ink); animation: fill 2s linear forwards; }
+  @keyframes fill { to { width: 100%; } }
+  .auto button { height: 60px; padding: 0 26px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--paper-2); font: inherit; font-size: 20px; font-weight: 800; color: var(--ink); cursor: pointer; }
 </style>
 </head>
 <body>
@@ -33,15 +40,24 @@
     <div class="code" id="code" aria-live="polite"><span></span><span></span><span></span><span></span><span></span><span></span></div>
     <div class="err" id="err"></div>
     <div class="pad" id="pad"></div>
-    <small>코드는 선생님 기록 화면 › 설정에 있어요. 다음부터는 즐겨찾기에 넣어 두면 바로 열려요.</small>
+    <small>코드는 선생님 기록 화면 › 설정에 있어요. 이 칠판에서 한 번 열면 다음부터는 코드 없이 바로 열려요.</small>
   </div>
+  <div class="box auto" id="auto" hidden><b>수업 화면을 여는 중…</b><div class="bar"><i></i></div><button type="button" id="other">다른 칠판 코드 넣기</button></div>
 </main>
 <script>
   (function () {
     var v = '', cells = document.querySelectorAll('#code span'), pad = document.getElementById('pad'), err = document.getElementById('err');
-    if (location.pathname.length > 1) err.textContent = '코드가 맞지 않아요. 다시 눌러 주세요.';
+    /* 이 기기에서 한 번 연 코드는 기억했다가 다음부터 바로 연다 (2초 안에 「다른 칠판 코드 넣기」로 멈출 수 있음).
+       틀린 코드면 이 쪽(404)으로 돌아오므로 기억을 지운다. 다른 기기에서는 여전히 코드가 필요하다. */
+    var K = 'sueop.board', saved = null; try { saved = localStorage.getItem(K); } catch (e) {}
+    if (location.pathname.length > 1) { err.textContent = '코드가 맞지 않아요. 다시 눌러 주세요.'; if (saved && location.pathname.indexOf(saved) >= 0) { try { localStorage.removeItem(K); } catch (e) {} saved = null; } }
+    else if (saved && /^\d{6}$/.test(saved) && !/[?&]new=?/.test(location.search)) {
+      var box = document.querySelector('.box'), auto = document.getElementById('auto'); box.hidden = true; auto.hidden = false;
+      var t = setTimeout(function () { location.href = '/' + saved; }, 2000);
+      document.getElementById('other').onclick = function () { clearTimeout(t); try { localStorage.removeItem(K); } catch (e) {} auto.hidden = true; box.hidden = false; };
+    }
     function paint() { cells.forEach(function (c, i) { c.textContent = v[i] || ''; c.className = i === v.length ? 'on' : ''; }); }
-    function go() { if (v.length === 6) location.href = '/' + v; }
+    function go() { if (v.length === 6) { try { localStorage.setItem(K, v); } catch (e) {} location.href = '/' + v; } }
     function key(k) { err.textContent = ''; if (k === '←') v = v.slice(0, -1); else if (k === '열기') return go(); else if (v.length < 6) v += k; paint(); if (v.length === 6) setTimeout(go, 250); }
     ['1','2','3','4','5','6','7','8','9','←','0','열기'].forEach(function (k) {
       var b = document.createElement('button'); b.type = 'button'; b.textContent = k; if (k === '열기') b.className = 'go'; if (k === '←') { b.className = 'back'; b.setAttribute('aria-label', '지우기'); }
