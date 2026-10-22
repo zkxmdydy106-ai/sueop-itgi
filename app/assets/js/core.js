@@ -102,7 +102,7 @@
   DT.drawPad = function (opt) {
     opt = opt || {}; const W = opt.w || 900, H = opt.h || 520;
     let strokes = opt.value ? (() => { try { return JSON.parse(opt.value); } catch (e) { return []; } })() : [];
-    const host = DT.el('div', { class: 'drawpad', style: { aspectRatio: W + ' / ' + H } });
+    const host = DT.el('div', { class: 'drawpad' + (opt.grid ? ' drawpad--grid' : ''), style: { aspectRatio: W + ' / ' + H } });
     DT.ink.set({ tool: 'pen' });   /* 펜을 먼저 켜야 판이 손가락·펜을 받는다 */
     const surf = new DT.ink.Surface(host, W, H, { load: () => strokes, save: (st) => { strokes = st; opt.onInput && opt.onInput(); } });
     surf.focus && surf.focus();
@@ -112,15 +112,17 @@
       DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('eraser') + '지우개', onclick: () => DT.ink.set({ tool: 'eraser' }) }),
       DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('undo') + '되돌리기', onclick: () => surf.undo() }),
       DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', html: DT.icon('trash') + '모두 지우기', onclick: () => surf.clear() }));
-    return { el: DT.el('div', { class: 'drawpad-wrap' }, tb, host), value: () => (strokes.length ? JSON.stringify(strokes) : ''), destroy: () => surf.destroy() };
+    return { el: DT.el('div', { class: 'drawpad-wrap' }, tb, host), value: () => (strokes.length ? JSON.stringify(strokes) : ''), destroy: () => { surf.destroy(); DT.ink.set({ tool: 'hand' }); } };   /* 그리기 판을 닫으면 펜을 끈다 — 켜 둔 채면 다른 화면의 판서 막이 손가락을 가로채 버튼이 안 눌린다 */
   };
   /* 선 데이터 → 작은 그림 (칠판 응답판·선생님 확인용) */
-  DT.drawThumb = function (json, w, h) {
+  DT.drawThumb = function (json, w, h, o) {
+    o = o || {};
     const cv = DT.el('canvas', { class: 'drawthumb' }); cv.width = w; cv.height = h; const g = cv.getContext('2d');
     let st = []; try { st = JSON.parse(json || '[]'); } catch (e) {}
     let mx = 1, my = 1; st.forEach((s) => { for (let i = 0; i < (s.p || []).length; i += 2) { mx = Math.max(mx, s.p[i]); my = Math.max(my, s.p[i + 1]); } });
-    const k = Math.min(w / Math.max(mx + 10, 300), h / Math.max(my + 10, 180));
-    g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.lineCap = 'round'; g.lineJoin = 'round';
+    const k = o.W ? Math.min(w / o.W, h / o.H) : Math.min(w / Math.max(mx + 10, 300), h / Math.max(my + 10, 180));
+    g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+    if (o.grid) { g.strokeStyle = '#D9E2EA'; g.lineWidth = 1; const step = 30 * k; for (let x = 0; x <= w; x += step) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } for (let y = 0; y <= h; y += step) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); } } g.lineCap = 'round'; g.lineJoin = 'round';
     st.forEach((s) => { const p = s.p || []; if (p.length < 2) return; g.strokeStyle = s.c || '#17191B'; g.globalAlpha = s.t === 'hl' ? 0.3 : 1; g.lineWidth = Math.max(1, (s.s || 3) * k * (s.t === 'hl' ? 4 : 1)); g.beginPath(); g.moveTo(p[0] * k, p[1] * k); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i] * k, p[i + 1] * k); g.stroke(); });
     return cv;
   };
