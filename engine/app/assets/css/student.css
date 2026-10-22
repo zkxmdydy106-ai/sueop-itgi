@@ -256,3 +256,20 @@
   background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px; }
 .drawpad .ink-layer, .drawpad .ink-laser { position: absolute; inset: 0; }
 .livesheet--draw { max-height: 92vh; overflow-y: auto; }
+
+/* 선생님 질문: 접기 · 보관함 단추 · 내 답 */
+.livesheet__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.livesheet__fold { display: inline-flex; align-items: center; gap: 4px; border: 0; background: var(--paper-2); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 14px; color: var(--ink-2); }
+.livesheet__fold .ic { width: 16px; height: 16px; }
+.livesheet__mine { padding: 10px 14px; border-radius: 12px; background: var(--paper-2); font-size: 18px; }
+.livesheet .drawthumb { width: 100%; max-width: 600px; height: auto; border-radius: 12px; border: 1px solid var(--line); }
+.lqchip { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 0; border-radius: 999px; background: var(--ink); color: var(--paper); font-weight: 800; font-size: 16px; box-shadow: 0 10px 30px -8px rgba(0,0,0,.45); }
+.lqchip .ic { width: 20px; height: 20px; }
+.lqchip b { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--accent, #E0336A); color: #fff; display: inline-grid; place-items: center; font-size: 13px; }
+.lqlist { display: grid; gap: 8px; }
+.lqlist__i { display: grid; gap: 2px; text-align: left; border: 1.5px solid var(--line); background: var(--white); border-radius: 14px; padding: 12px 14px; }
+.lqlist__i.is-todo { border-color: var(--ink); }
+.lqlist__t { font-weight: 700; }
+.lqlist__i small { color: var(--ink-2); }
+/* 격자 그리기 판 (좌표·그래프 문제) */
+.drawpad--grid { background-color: #fff; background-image: linear-gradient(#D9E2EA 1px, transparent 1px), linear-gradient(90deg, #D9E2EA 1px, transparent 1px); background-size: calc(100% / 30) calc(100% / 17.333); }

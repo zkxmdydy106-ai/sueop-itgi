@@ -7,7 +7,7 @@
   const T = { me: null, tb: null, classes: [], classId: null, roster: [], assignments: [], subs: [], obs: [], signals: [], lessons: [], view: 'home', aid: null, tab: 'result', page: {}, key: null };
   const ctx = () => ({ tb: T.tb, assignments: T.assignments, subs: T.subs, roster: T.roster, obs: T.obs, signals: T.signals });
   const cls = () => T.classes.find((c) => c.id === T.classId) || { name: '반 없음' };
-  const nameOf = (key) => (T.roster.find((r) => r.key === key) || { name: key }).name;
+  const nameOf = (key) => (T.roster.find((r) => r.key === key) || {}).name || String(key || '').split('@')[0] || '학생';   /* 명단에 없으면 계정 앞부분 */
   const view = () => $('#view');
   const NAV = [['home', 'home', '홈'], ['worksheets', 'list', '학습지'], ['students', 'users', '학생'], ['standards', 'target', '성취기준'], ['lessons', 'calendar', '수업 일지'], ['export', 'download', '기록 내보내기'], ['settings', 'gear', '설정']];
   const TAGS = ['질문', '발표', '도움', '끝까지', '자료', '3D 탐구', '집중 필요'];
@@ -217,7 +217,7 @@
     if (!pend.length) { wrap.append(DT.el('div', { class: 'empty-c', style: { gridColumn: '1 / -1' } }, DT.el('b', null, '이 학습지는 모두 확인했어요'), DT.el('span', null, '학생 이름을 눌러 다시 볼 수도 있어요 (전체 결과 › 칸 누르기).'))); return wrap; }
     let i = DT.clamp(T.page.chk || 0, 0, pend.length - 1); const s = pend[i];
     const left = DT.el('div', { class: 'check__ans' });
-    left.append(DT.el('div', { class: 'row' }, DT.el('b', { style: { fontSize: '19px' } }, s.name + ' · ' + s.no), DT.el('span', { class: 'muted num' }, (i + 1) + ' / ' + pend.length + '명'), DT.el('span', { class: 'grow' }), DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', disabled: i === 0, html: DT.icon('left') + '이전 학생', onclick: () => { T.page.chk = i - 1; worksheets(); } })));
+    left.append(DT.el('div', { class: 'row' }, DT.el('b', { style: { fontSize: '19px' } }, (s.name || nameOf(s.key)) + ' · ' + (s.no || '')), DT.el('span', { class: 'muted num' }, (i + 1) + ' / ' + pend.length + '명'), DT.el('span', { class: 'grow' }), DT.el('button', { class: 'btn btn--sm btn--ghost', type: 'button', disabled: i === 0, html: DT.icon('left') + '이전 학생', onclick: () => { T.page.chk = i - 1; worksheets(); } })));
     DT.rec.itemsFor(a, s.key).forEach((it) => { if (DT.ws.needsTeacher(it) || it.type === 'self') left.append(answerBox(it, (s.answers || {})[it.id], s)); });
     const sc = s.score || {}; if (sc.total) left.append(DT.el('div', { class: 'muted' }, '자동 채점 ' + sc.correct + '/' + sc.total + ' — 피드백이 이미 학생에게 갔어요.'));
     const right = card('피드백', null);
@@ -252,7 +252,7 @@
       if (DT.ws.autoGraded(it)) box.append(DT.el('div', { class: 'ansbox' }, DT.el('h4', { html: DT.md(it.label || '') + (r ? (r.correct ? ' · 맞음' : ' · 틀림') : '') }), DT.el('p', null, Array.isArray(v) ? v.join(', ') : it.type === 'choice' && v != null ? '①②③④⑤'[+v - 1] || v : String(v == null ? '–' : v))));
       else box.append(answerBox(it, v, s));
     });
-    DT.modal({ title: s.name + ' · ' + a.title, body: box, wide: true, actions: [{ label: '닫기' }, { label: '누적 기록 보기', kind: 'ink', onClick: (c) => { c(); T.key = s.key; route('profile'); } }] });
+    DT.modal({ title: (s.name || nameOf(s.key)) + ' · ' + a.title, body: box, wide: true, actions: [{ label: '닫기' }, { label: '누적 기록 보기', kind: 'ink', onClick: (c) => { c(); T.key = s.key; route('profile'); } }] });
   }
   function csvOf(a, subs) {
     const items = a.items || [];

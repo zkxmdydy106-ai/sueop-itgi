@@ -117,7 +117,7 @@
       onLive(classId, cb) { return listen('live', (l) => l.id === classId, (rows) => cb(rows[0] || null)); },
       async getEdits(courseId) { const m = {}; col('edits').filter((e) => e.courseId === courseId).forEach((e) => (m[e.screenId] = e)); return m; },
       async saveEdit(courseId, screenId, e) { return upsert('edits', Object.assign({ order: [], hide: [], scale: {}, hl: {}, text: {}, notes: [] }, e, { id: courseId + '__' + screenId, courseId, screenId, at: Date.now() })); },
-      async sendLiveAnswer(classId, qid, key, value) { return upsert('liveAnswers', { id: classId + '__' + qid + '__' + key, classId, qid, key, value, at: Date.now() }); },
+      async sendLiveAnswer(classId, qid, key, value, who) { return upsert('liveAnswers', Object.assign({ id: classId + '__' + qid + '__' + key, classId, qid, key, value, at: Date.now() }, who || {})); },
       onLiveAnswers(classId, qid, cb) { return listen('liveAnswers', (a) => a.classId === classId && a.qid === qid, cb); },
       async listLiveAnswers(classId) { return col('liveAnswers').filter((a) => a.classId === classId); },
       async sendSignal(classId, key, screenId, level) { return upsert('signals', { id: classId + '__' + screenId + '__' + key, classId, key, screenId, level, at: Date.now() }); },
@@ -170,12 +170,13 @@
     const docs = (snap) => snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
     const emailKey = (e) => String(e || '').toLowerCase();
     /* 복습 학습지의 학생별 문항: 선생님은 모두, 학생은 자기 것만 붙인다 */
+    const perCache = {};
     async function withPer(list) {
       list.forEach(unpackA);
       await Promise.all(list.filter((a) => a.hasPer).map(async (a) => {
         const col = fs.collection('assignments').doc(a.id).collection('per'); a.perStudent = {};
         if (me && me.role === 'teacher') docs(await col.get()).forEach((d) => (a.perStudent[d.id] = d.items || []));
-        else if (me) { const d = await col.doc(me.key).get().catch(() => null); a.perStudent[me.key] = d && d.exists ? d.data().items || [] : []; }
+        else if (me) { if (perCache[a.id]) { a.perStudent[me.key] = perCache[a.id]; return; } const d = await col.doc(me.key).get().catch(() => null); a.perStudent[me.key] = perCache[a.id] = d && d.exists ? d.data().items || [] : []; }   /* 학생: 한 번 받은 내 문항은 기억 — 학습지 목록이 바뀔 때마다 다시 받지 않게 */
       }));
       return list;
     }
@@ -342,7 +343,7 @@
       onLive(classId, cb) { return fs.collection('live').doc(classId).onSnapshot((d) => cb(d.exists ? d.data() : null), () => cb(null)); },
       async getEdits(courseId) { const m = {}; try { docs(await fs.collection('edits').where('courseId', '==', courseId).get()).forEach((e) => (m[e.screenId] = e)); } catch (err) { /* 규칙 없는 옛 서버: 고친 것 없이 */ } return m; },
       async saveEdit(courseId, screenId, e) { await fs.collection('edits').doc(courseId + '__' + screenId).set(Object.assign({ order: [], hide: [], scale: {}, hl: {}, text: {}, notes: [] }, e, { courseId, screenId, at: ts() })); },
-      async sendLiveAnswer(classId, qid, key, value) { await fs.collection('liveAnswers').doc(classId + '__' + qid + '__' + skey(key)).set({ classId, qid, key, value, at: ts() }); },
+      async sendLiveAnswer(classId, qid, key, value, who) { await fs.collection('liveAnswers').doc(classId + '__' + qid + '__' + skey(key)).set(Object.assign({ classId, qid, key, value, at: ts() }, who || {})); },
       onLiveAnswers(classId, qid, cb) { return fs.collection('liveAnswers').where('classId', '==', classId).where('qid', '==', qid).onSnapshot((s) => cb(docs(s))); },
       async listLiveAnswers(classId) { return docs(await fs.collection('liveAnswers').where('classId', '==', classId).get()); },
       async sendSignal(classId, key, screenId, level) { await fs.collection('signals').doc(classId + '__' + screenId + '__' + skey(key)).set({ classId, key, screenId, level, at: ts() }); },

@@ -334,7 +334,7 @@
       ab.onclick = () => { ansBox.innerHTML = ''; ansBox.append(DT.el('div', { class: 'focus__ans', html: '<b>정답</b>' + DT.md(b.ans) })); ab.disabled = true; };
       actions.append(ab);
     }
-    if (S.classId && (b.grade || b.t === 'prob')) actions.append(DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('send') + '학생에게 묻기', onclick: () => askFromBlock(b) }));
+    if (S.classId && (b.grade || b.t === 'prob')) { const slot = DT.el('span', { class: 'askslot' }); actions.append(slot); S.focusAsk = { b, slot }; paintAskSlot(); }
     qside.append(card, actions, ansBox);
     const main = DT.el('div', { class: 'focus' }, qside, board);
     ov.append(bar, main);
@@ -518,10 +518,22 @@
   }
 
   /* ── 학생에게 묻기 ── */
+  /* 이 반에서 이 문제를 물어본 적이 있으면 그 질문(풀이 보기용) */
+  const askedKey = () => 'board.asked.' + C.courseId + '.' + (S.classId || '');
+  const askedOf = (b) => (DT.store.get(askedKey(), {}) || {})[b.id] || null;
+  const needGrid = (t) => /좌표|그래프|모눈|격자|평면 위에|그려 보|그리시오|나타내시오/.test(DT.plain(t || ''));
+  /* 크게 풀기 화면의 묻기 단추: 처음엔 「학생에게 묻기」, 물어본 뒤에는 「학생 풀이 보기」 + 「다시 묻기」 */
+  function paintAskSlot() {
+    const f = S.focusAsk; if (!f) return;
+    f.slot.innerHTML = ''; const asked = askedOf(f.b);
+    if (asked) f.slot.append(DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('users') + '학생 풀이 보기', onclick: () => showAskPanel(askedOf(f.b)) }), DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('send') + '다시 묻기', onclick: () => askFromBlock(f.b) }));
+    else f.slot.append(DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('send') + '학생에게 묻기', onclick: () => askFromBlock(f.b) }));
+  }
   function askFromBlock(b) {
+    S.askBlock = b;
     const g = b.grade || {};
     const type = g.type === 'choice' ? 'choice' : g.type === 'ox' ? 'ox' : 'short';
-    if (!b.grade && b.t === 'prob') return sendAsk({ text: b.q + (b.sub && b.sub.length ? '\n' + b.sub.map((x, i) => '(' + (i + 1) + ') ' + x).join('   ') : ''), type: 'draw', key: [], label: b.label });   /* 그림·서술 문제: 그리기 판으로 */
+    if (!b.grade && b.t === 'prob') return sendAsk({ text: b.q + (b.sub && b.sub.length ? '\n' + b.sub.map((x, i) => '(' + (i + 1) + ') ' + x).join('   ') : ''), type: 'draw', grid: needGrid(b.q + ' ' + (b.sub || []).join(' ')), key: [], label: b.label });   /* 그림·서술 문제: 그리기 판으로 */
     if (b.sub && b.sub.length > 1 && type === 'short') {   /* ⑴⑵… 여러 문항: 문항마다 칸을 나눠 묻는다 */
       const ks = Array.isArray(g.key) && g.key.length === b.sub.length ? g.key.map(String) : b.sub.map(() => '');
       return sendAsk({ text: b.q, type: 'short', parts: b.sub, pkeys: ks, key: [], label: b.label, mode: g.type });
@@ -544,9 +556,13 @@
     const m = DT.modal({ title: '학생에게 묻기', body: wrap, wide: true, actions: [{ label: '닫기' }, { label: '보내기', kind: 'ink', icon: 'send', onClick: (c) => { c(); sendAsk({ text: text.value.trim() || DT.plain(s.title) + ' — 지금 화면에 대한 답', type, choices: type === 'choice' ? ['', '', '', '', ''] : null, key: [] }); } }] });
   }
   async function sendAsk(q) {
+    if (S.sendingAsk) return; S.sendingAsk = true; setTimeout(() => { S.sendingAsk = false; }, 1200);   /* 두 번 눌러 두 번 보내지 않게 */
     q.qid = DT.uid('lq'); q.open = true; q.reveal = false; q.at = Date.now(); q.screenId = screens()[S.idx].id;
+    const blk = S.askBlock; S.askBlock = null; if (blk) q.blockId = blk.id;
     try { await DT.data.setLive(S.classId, { question: JSON.parse(JSON.stringify(q)) }); }
     catch (e) { return DT.toast('학생에게 보내지 못했어요. 칠판을 휴대폰 QR로 다시 열어 주세요. (' + (e.code || e.message || e) + ')', 'bad'); }
+    S.curQ = q;
+    if (blk) { const m = DT.store.get(askedKey(), {}) || {}; m[blk.id] = JSON.parse(JSON.stringify(q)); DT.store.set(askedKey(), m); paintAskSlot(); }
     showAskPanel(q);
   }
   function showAskPanel(q) {
@@ -558,6 +574,14 @@
     const reveal = DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('eye') + '정답 공개' });
     const stop = DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('check') + '응답 마감' });
     const foot = DT.el('div', { class: 'askpanel__foot' }, reveal, stop);
+    const isCur = S.curQ && S.curQ.qid === q.qid;
+    if (!isCur) { reveal.hidden = true; stop.hidden = true; }
+    if (q.open === false) stop.disabled = true;
+    let byStu = q.type === 'draw';
+    const who = (r) => r.name || ((S.roster.find((x) => x.key === r.key) || {}).name) || '학생';
+    const toggle = DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('users') + '학생별 보기' });
+    toggle.onclick = () => { byStu = !byStu; toggle.innerHTML = DT.icon(byStu ? 'chart' : 'users') + (byStu ? '모아 보기' : '학생별 보기'); paint(); };
+    if (q.type !== 'draw') foot.prepend(toggle);
     if (DT.data.mode === 'demo') foot.append(DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('users') + '예시 응답 넣기', title: '체험용: 가상 학생들의 응답을 넣어 봐요', onclick: () => demoAnswers(q) }));
     p.append(DT.el('div', { class: 'askpanel__head' }, DT.el('h3', { class: 'askpanel__title' }, q.label ? q.label + ' · 학생 응답' : '학생 응답'), closeB), DT.el('div', { class: 'askpanel__q', html: DT.md(q.text) }), count, bars, foot);
     $('#layer').append(p);
@@ -568,6 +592,7 @@
       bars.innerHTML = '';
       const keys = (q.key || []).flatMap((k) => String(k).split('|')).map(DT.norm);
       let groups;
+      if (byStu && q.type !== 'draw') { paintList(); return; }
       if (q.type === 'ox') groups = ['O', 'X'].map((v) => [v, rows.filter((r) => r.value === v).length]);
       else if (q.type === 'choice') groups = (q.choices || []).map((c, i) => [String(i + 1), rows.filter((r) => String(r.value) === String(i + 1)).length, c]);   // 번호는 1부터 (교과서 ①=1)
       else if (q.parts) { paintParts(); return; }
@@ -580,13 +605,21 @@
         bars.append(DT.el('div', { class: 'askbar' + (isKey ? ' is-key' : '') }, DT.el('span', { class: 'askbar__label', title: label }, label), DT.el('div', { class: 'askbar__track' }, DT.el('div', { class: 'askbar__fill', style: { width: (g[1] / max * 100) + '%' } })), DT.el('span', { class: 'askbar__n' }, g[1] + '명')));
       });
     }
+    /* 학생별 답 (이름 · 답) — 번호순 */
+    function paintList() {
+      const sorted = rows.slice().sort((x, y) => String(x.no || '').localeCompare(String(y.no || '')));
+      const box = DT.el('div', { class: 'asklist' });
+      sorted.forEach((r) => box.append(DT.el('div', { class: 'asklist__r' }, DT.el('b', null, who(r)), DT.el('span', { html: DT.md(String(r.value || '').split(DT.PSEP).map((x, i) => (q.parts ? '(' + (i + 1) + ') ' : '') + x).join('   ')) }))));
+      if (!rows.length) box.append(DT.el('p', { class: 'muted' }, '아직 낸 학생이 없어요.'));
+      bars.append(box);
+    }
     /* 그림 답: 학생 그림을 작게 모아 보기 · 누르면 크게 */
     function paintDraw() {
       const grid = DT.el('div', { class: 'askdraws' });
       rows.forEach((r) => {
-        const who = (S.roster.find((x) => x.key === r.key) || {}); const nm = who.name || '';
-        const cell = DT.el('button', { class: 'askdraw', type: 'button', title: nm }, DT.drawThumb(r.value, 300, 180), DT.el('span', null, nm));
-        cell.onclick = () => DT.modal({ title: nm + ' 학생 풀이', wide: true, body: DT.el('div', null, DT.drawThumb(r.value, 900, 520)) });
+        const nm = who(r);
+        const cell = DT.el('button', { class: 'askdraw', type: 'button', title: nm }, DT.drawThumb(r.value, 300, 180, { W: 900, H: 520, grid: q.grid }), DT.el('span', null, nm));
+        cell.onclick = () => DT.modal({ title: nm + ' 학생 풀이', wide: true, body: DT.el('div', null, DT.drawThumb(r.value, 900, 520, { W: 900, H: 520, grid: q.grid })) });
         grid.append(cell);
       });
       if (!rows.length) grid.append(DT.el('p', { class: 'muted' }, '학생들이 그려서 보내면 여기에 모여요.'));
@@ -614,7 +647,7 @@
       S.lesson.live = S.lesson.live.filter((x) => x.qid !== q.qid).concat([{ qid: q.qid, text: DT.plain(q.text).slice(0, 80), label: q.label, screenId: q.screenId, n: rows.length, ok }]);
       DT.store.set('board.lesson.' + C.courseId + '.' + S.classId, S.lesson);
     }
-    closeB.onclick = async () => { off(); record(); if (q.open) { q.open = false; await DT.data.setLive(S.classId, { question: q }); } p.remove(); };
+    closeB.onclick = () => { off(); record(); p.remove(); };
     paint();
   }
   async function demoAnswers(q) {
