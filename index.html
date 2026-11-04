@@ -777,16 +777,18 @@ footer .sp { flex: 1; }
       </div>
       <!-- 물리·화학 -->
       <div class="ex" data-ex="chem">
-        <div class="ex-top"><div><h2>보일 법칙 → 분자가 움직이는 실험</h2><p class="what">부피를 줄이면 분자가 벽에 더 자주 부딪혀 압력이 커지는 걸 눈으로 봐요.</p></div></div>
+        <div class="ex-top"><div><h2>산·염기 중화 → 한 방울씩 떨어뜨리는 실험</h2><p class="what">염기를 넣을수록 색과 이온, pH가 어떻게 바뀌는지 한 화면에서 같이 봐요.</p></div></div>
         <div class="ex-body">
-          <div class="page-snip"><span class="lbl">교과서에 이런 내용이 있으면</span><h4>보일 법칙</h4><p>온도가 일정할 때, 일정한 양의 기체의 부피는 압력에 반비례한다. 부피가 줄어들면 기체 분자가 벽에 부딪히는 횟수가 많아져 압력이 커진다.</p><span class="pno">예시 글 · 직접 쓴 것</span></div>
+          <div class="page-snip"><span class="lbl">교과서에 이런 내용이 있으면</span><h4>산과 염기의 중화 반응</h4><p>산의 수소 이온(H⁺)과 염기의 수산화 이온(OH⁻)이 만나 물이 생긴다. BTB 용액은 산성에서 노란색, 중성에서 초록색, 염기성에서 파란색을 띤다.</p><span class="pno">예시 글 · 직접 쓴 것</span></div>
           <div class="arrow" aria-hidden="true"><svg class="ic"><use href="#i-arrow"/></svg></div>
-          <div class="tool"><div class="tt"><b>시뮬레이션</b><span class="chip">분자 운동</span><span class="chip t">값 읽기</span></div>
-            <div class="mini"><canvas id="gasC" width="960" height="460" aria-label="실린더 속 기체 분자"></canvas></div>
-            <label class="ctl"><span>부피</span><input type="range" id="vR" min="1" max="4" step="0.5" value="3"><output id="vO">3 L</output></label>
+          <div class="tool"><div class="tt"><b>중화 적정 실험</b><span class="chip">색·이온·그래프</span><span class="chip t">학생과 같이 가능</span></div>
+            <div class="mini"><svg id="acidSvg" viewBox="0 0 640 320" role="img" aria-label="묽은 염산에 수산화 나트륨 수용액을 넣는 중화 실험"></svg></div>
+            <label class="ctl"><span>넣은 NaOH</span><input type="range" id="acidR" min="0" max="30" step="2.5" value="0"><output id="acidO">0 mL</output></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm pri" id="acidDrop" type="button">한 번 떨어뜨리기 (+2.5 mL)</button><button class="btn sm" id="acidReset" type="button">처음부터</button></div>
+            <div class="caption" id="acidCap" aria-live="polite"></div>
           </div>
         </div>
-        <div class="how"><span>실제 앱에는 <b>3D 유리 실린더</b>와 P-V 그래프가 함께 나오는 모형이 있어요</span></div>
+        <div class="how"><span>"BTB 용액이 초록색이 되는 부피는?"처럼 <b>학생과 같이</b>로 물으면 학생들이 고른 값이 칠판에 모여요</span></div>
       </div>
       <!-- 생명과학 -->
       <div class="ex" data-ex="bio">
@@ -1124,33 +1126,49 @@ footer .sp { flex: 1; }
     R.addEventListener('input', draw); draw();
   };
   EX.chem = function () {
-    const c = $('#gasC'), ctx = c.getContext('2d'), R = $('#vR'), O = $('#vO');
-    const N = 70, W = 960, H = 460, x0 = 120, cw = 520; const ps = [];
-    for (let i = 0; i < N; i++) ps.push({ x: Math.random(), y: Math.random(), vx: (Math.random() - .5) * .012, vy: (Math.random() - .5) * .012 });
-    function frame() {
-      const V = +R.value; rangeFill(R); O.textContent = V + ' L';
-      const top = 40 + (4 - V) / 3 * 300, bottom = 420, h = bottom - top;
-      ctx.fillStyle = '#FFFCF6'; ctx.fillRect(0, 0, W, H);
-      const grd = ctx.createLinearGradient(x0, 0, x0 + cw, 0); grd.addColorStop(0, '#DCEFF5'); grd.addColorStop(.5, '#F2FAFC'); grd.addColorStop(1, '#D3E9F0');
-      ctx.fillStyle = grd; ctx.fillRect(x0, top, cw, h);
-      ctx.strokeStyle = '#17191B'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x0, 20); ctx.lineTo(x0, bottom); ctx.lineTo(x0 + cw, bottom); ctx.lineTo(x0 + cw, 20); ctx.stroke();
-      ctx.fillStyle = '#8E979D'; ctx.fillRect(x0 + 4, top - 26, cw - 8, 26); ctx.fillStyle = '#6F777D'; ctx.fillRect(x0 + cw / 2 - 10, 0, 20, top - 26);
-      ps.forEach((p) => {
-        if (!reduce) { p.x += p.vx; p.y += p.vy * (300 / h); }
-        if (p.x < 0 || p.x > 1) { p.vx *= -1; p.x = Math.min(1, Math.max(0, p.x)); }
-        if (p.y < 0 || p.y > 1) { p.vy *= -1; p.y = Math.min(1, Math.max(0, p.y)); }
-        const px = x0 + 12 + p.x * (cw - 24), py = top + 12 + p.y * (h - 24);
-        const g2 = ctx.createRadialGradient(px - 3, py - 3, 1, px, py, 10); g2.addColorStop(0, '#FF9DB8'); g2.addColorStop(1, '#C2244F');
-        ctx.beginPath(); ctx.arc(px, py, 9, 0, 7); ctx.fillStyle = g2; ctx.fill();
-      });
-      const pr = 3 / V;
-      ctx.fillStyle = '#17191B'; ctx.font = '700 30px "IBM Plex Sans KR", sans-serif'; ctx.fillText('압력', 700, 140);
-      ctx.font = '400 78px Jua, sans-serif'; ctx.fillStyle = '#B81E50'; ctx.fillText(pr.toFixed(1), 700, 225); ctx.font = '600 26px "IBM Plex Sans KR", sans-serif'; ctx.fillStyle = '#4F5458'; ctx.fillText('기압', 840, 225);
-      ctx.fillStyle = '#E3DCCB'; ctx.fillRect(700, 260, 220, 22); ctx.fillStyle = '#E0336A'; ctx.fillRect(700, 260, Math.min(220, pr / 3 * 220), 22);
-      ctx.fillStyle = '#4F5458'; ctx.font = '600 22px "IBM Plex Sans KR", sans-serif'; ctx.fillText('부피 × 압력 = ' + (V * pr).toFixed(1), 700, 330); ctx.fillText('(늘 같은 값)', 700, 362);
-      if (!reduce) requestAnimationFrame(frame);
+    /* 0.1 M HCl 20 mL + 0.1 M NaOH V mL — 값은 계산, 이온 모형은 2.5 mL가 입자 1개 (HCl 20 mL = 8개) */
+    const svg = $('#acidSvg'), R = $('#acidR'), O = $('#acidO'), cap = $('#acidCap');
+    const pH = (V) => { if (Math.abs(V - 20) < 1e-9) return 7; if (V < 20) return -Math.log10(0.1 * (20 - V) / (20 + V)); return 14 + Math.log10(0.1 * (V - 20) / (20 + V)); };
+    const bx = 34, bw = 200, by0 = 298, bTop = 96;                 /* 비커 */
+    const gx = 322, gw = 288, gy = 34, gh = 236;                   /* 그래프 */
+    const X = (v) => gx + v / 30 * gw, Y = (ph) => gy + gh - ph / 14 * gh;
+    let curve = ''; for (let v = 0; v <= 30.001; v += 0.25) curve += (v ? 'L' : 'M') + X(v).toFixed(1) + ' ' + Y(pH(v)).toFixed(1);
+    const SEEDS = []; for (let i = 0; i < 40; i++) SEEDS.push([((i * 37) % 9) / 8, (i % 5) / 4]);
+    const KINDS = { Cl: ['Cl⁻', '#5F6368'], H: ['H⁺', '#D32F45'], Na: ['Na⁺', '#7B3FB5'], OH: ['OH⁻', '#1F5FBF'], W: ['H₂O', '#1B6A87'] };
+    function draw() {
+      const V = +R.value; rangeFill(R); O.textContent = V + ' mL';
+      const ph = pH(V), n = Math.round(V / 2.5);
+      const col = ph < 6 ? '#F2C94C' : ph <= 7.6 ? '#7CC36E' : '#5B8FD9';
+      const name = ph < 6 ? '노란색' : ph <= 7.6 ? '초록색' : '파란색';
+      const nature = V < 20 ? '산성' : V === 20 ? '중성' : '염기성';
+      const level = by0 - 112 - (V / 30) * 56;   /* 넣을수록 액체 높이가 올라간다 */
+      const parts = []; const add = (k, c) => { for (let i = 0; i < c; i++) parts.push(k); };
+      add('Cl', 8); add('Na', n); add('H', Math.max(0, 8 - n)); add('OH', Math.max(0, n - 8)); add('W', Math.min(8, n));
+      let g = '<rect width="640" height="320" fill="#FFFCF6"/>';
+      /* 뷰렛과 방울 */
+      g += '<rect x="' + (bx + bw / 2 - 9) + '" y="8" width="18" height="62" rx="4" fill="#EAF3F7" stroke="#17191B" stroke-width="2"/><rect x="' + (bx + bw / 2 - 7) + '" y="' + (10 + (V / 30) * 44) + '" width="14" height="' + (58 - (V / 30) * 44) + '" fill="#BFD6F2"/><path d="M' + (bx + bw / 2 - 4) + ' 70h8l-2 12h-4z" fill="#17191B"/>';
+      g += '<text x="' + (bx + bw / 2 + 16) + '" y="30" font-size="13" font-weight="700" font-family="IBM Plex Sans KR" fill="#17191B">0.1 M NaOH</text>';
+      /* 비커 */
+      g += '<path d="M' + bx + ' ' + level + 'H' + (bx + bw) + 'V' + (by0 - 8) + 'q0 8 -8 8H' + (bx + 8) + 'q-8 0 -8 -8Z" fill="' + col + '" opacity=".55"/>';
+      g += '<path d="M' + bx + ' ' + bTop + 'V' + (by0 - 8) + 'q0 8 8 8H' + (bx + bw - 8) + 'q8 0 8 -8V' + bTop + '" fill="none" stroke="#17191B" stroke-width="3"/>';
+      /* 이온 모형 */
+      const cols = 7, cw = (bw - 26) / cols, top = level + 10, rows = Math.ceil(parts.length / cols), rh = Math.min(26, (by0 - 10 - top) / Math.max(rows, 1));
+      parts.forEach((k, i) => { const c = i % cols, r = Math.floor(i / cols), x = bx + 13 + cw * (c + .5) + (SEEDS[i][0] - .5) * 3, y = top + rh * (r + .5) + (SEEDS[i][1] - .5) * 3; g += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="10.5" fill="' + KINDS[k][1] + '"/><text x="' + x.toFixed(1) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="middle" font-size="9" font-weight="700" font-family="IBM Plex Sans KR" fill="#fff">' + KINDS[k][0] + '</text>'; });
+      /* pH 그래프 */
+      g += '<rect x="' + gx + '" y="' + Y(7.6) + '" width="' + gw + '" height="' + (Y(6) - Y(7.6)) + '" fill="#7CC36E" opacity=".22"/>';
+      for (let t = 0; t <= 14; t += 7) g += '<line x1="' + gx + '" y1="' + Y(t) + '" x2="' + (gx + gw) + '" y2="' + Y(t) + '" stroke="#E3DCCB"/><text x="' + (gx - 8) + '" y="' + (Y(t) + 4) + '" text-anchor="end" font-size="12" font-family="IBM Plex Sans KR" fill="#4F5458">' + t + '</text>';
+      for (let t = 0; t <= 30; t += 10) g += '<line x1="' + X(t) + '" y1="' + gy + '" x2="' + X(t) + '" y2="' + (gy + gh) + '" stroke="#EFE9DB"/><text x="' + X(t) + '" y="' + (gy + gh + 18) + '" text-anchor="middle" font-size="12" font-family="IBM Plex Sans KR" fill="#4F5458">' + t + '</text>';
+      g += '<path d="M' + gx + ' ' + gy + 'V' + (gy + gh) + 'H' + (gx + gw) + '" fill="none" stroke="#17191B" stroke-width="2"/>';
+      g += '<text x="' + gx + '" y="' + (gy - 12) + '" font-size="13" font-weight="700" font-family="IBM Plex Sans KR" fill="#17191B">pH</text><text x="' + (gx + gw) + '" y="' + (gy + gh + 36) + '" text-anchor="end" font-size="13" font-weight="700" font-family="IBM Plex Sans KR" fill="#17191B">넣은 NaOH (mL)</text>';
+      g += '<path d="' + curve + '" fill="none" stroke="#17191B" stroke-width="3"/>';
+      g += '<line x1="' + X(V) + '" y1="' + Y(ph) + '" x2="' + X(V) + '" y2="' + (gy + gh) + '" stroke="#E0336A" stroke-dasharray="4 4" stroke-width="2"/><circle cx="' + X(V) + '" cy="' + Y(ph) + '" r="8" fill="#E0336A" stroke="#fff" stroke-width="2"/>';
+      svg.innerHTML = g;
+      cap.innerHTML = '<b>' + nature + ' · pH ' + ph.toFixed(1) + ' · BTB ' + name + '</b> — ' + (V === 0 ? 'H⁺가 많아요. 염기를 떨어뜨려 보세요.' : V < 20 ? '들어온 OH⁻가 H⁺와 만나 물이 돼요. 남은 H⁺ ' + (8 - n) + '개 · 생긴 물 ' + n + '개' : V === 20 ? 'H⁺와 OH⁻가 모두 만나 물이 됐어요. 완전히 중화된 순간이에요.' : '더 이상 만날 H⁺가 없어서 OH⁻가 남아요. 남은 OH⁻ ' + (n - 8) + '개');
     }
-    R.addEventListener('input', () => { if (reduce) frame(); }); requestAnimationFrame(frame);
+    R.addEventListener('input', draw);
+    $('#acidDrop').onclick = () => { if (+R.value >= 30) return toast('다 넣었어요. 「처음부터」를 눌러 보세요.'); R.value = +R.value + 2.5; draw(); };
+    $('#acidReset').onclick = () => { R.value = 0; draw(); };
+    draw();
   };
   EX.bio = function () {
     const svg = $('#bioSvg'), cap = $('#bioCap'), btns = $('#bioBtns');
