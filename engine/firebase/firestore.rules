@@ -71,8 +71,10 @@ service cloud.firestore {
     match /liveAnswers/{id} {
       allow read: if isTeacher() || (isMember() && resource.data.key == email());
       allow create: if isTeacher() || (inMyClass(request.resource.data.classId) && request.resource.data.key == email()
-                      && id == request.resource.data.classId + '__' + request.resource.data.qid + '__' + myKey());
-      allow update: if isTeacher() || (inMyClass(request.resource.data.classId) && request.resource.data.key == email() && resource.data.key == email());
+                      && id == request.resource.data.classId + '__' + request.resource.data.qid + '__' + myKey()
+                      && !('mark' in request.resource.data));   // ⭕/다시 표시는 선생님만
+      allow update: if isTeacher() || (inMyClass(request.resource.data.classId) && request.resource.data.key == email() && resource.data.key == email()
+                      && !('mark' in request.resource.data));
     }
     match /signals/{id} {
       allow read: if isTeacher() || (isMember() && resource.data.key == email());

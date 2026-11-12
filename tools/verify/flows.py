@@ -128,7 +128,7 @@ async def main():
             await bd.click('#btnTools'); await bd.wait_for_timeout(300); await bd.click('.toolmenu >> text=' + label); await bd.wait_for_timeout(800)
             if then: await then()
         async def ask_direct():
-            for typ in ['O / X', '①②③④⑤ 고르기', '짧은 답']:
+            for typ in ['O / X', '①②③④⑤ 고르기', '펜으로 쓰기']:
                 await tool('학생에게 묻기'); await bd.click('.modal .chip:has-text("%s")' % typ); await bd.click('.modal__foot >> text=보내기'); await bd.wait_for_timeout(800)
                 for x in ['응답 마감', '정답 공개']:
                     if await bd.is_visible('text=' + x): await bd.click('text=' + x); await bd.wait_for_timeout(300)

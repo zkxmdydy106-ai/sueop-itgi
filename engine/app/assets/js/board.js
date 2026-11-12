@@ -453,7 +453,7 @@
     if (NS) item('send', '학습지 만들기 · 인쇄', '이 소단원 학습지를 골라 만들고 종이로 인쇄', openSend, true);
     else item('send', '학습지 보내기', '이 소단원 학습지를 학생 아이패드로', needClass(openSend), true);
     if (!NS) {
-      item('ask', '학생에게 묻기', 'O/X · 고르기 · 짧은 답을 바로', needClass(() => openAsk(null)));
+      item('ask', '학생에게 묻기', 'O/X · 고르기 · 펜으로 쓰기', needClass(() => openAsk(null)));
       item('signal', '이해도 · 질문함' + (nq ? '<i class="toolmenu__badge num">' + nq + '</i>' : ''), '학생들의 신호와 익명 질문', needClass(openSignals));
       item('users', '모둠 만들기', '정답률을 고려해 고르게 섞기', needClass(openGroups));
       item('dice', '발표자 뽑기', '무작위로 한 명', needClass(openPicker));
@@ -529,16 +529,15 @@
     if (asked) f.slot.append(DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('users') + '학생 풀이 보기', onclick: () => showAskPanel(askedOf(f.b)) }), DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('send') + '다시 묻기', onclick: () => askFromBlock(f.b) }));
     else f.slot.append(DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('send') + '학생에게 묻기', onclick: () => askFromBlock(f.b) }));
   }
+  /* 고르기·O/X는 단추로(바로 모여 막대그래프), 그 밖의 문제는 모두 펜으로 풀이를 써서 보내고 선생님이 ⭕/다시 로 채점 */
   function askFromBlock(b) {
     S.askBlock = b;
-    const g = b.grade || {};
-    const type = g.type === 'choice' ? 'choice' : g.type === 'ox' ? 'ox' : 'short';
-    if (!b.grade && b.t === 'prob') return sendAsk({ text: b.q + (b.sub && b.sub.length ? '\n' + b.sub.map((x, i) => '(' + (i + 1) + ') ' + x).join('   ') : ''), type: 'draw', grid: needGrid(b.q + ' ' + (b.sub || []).join(' ')), key: [], label: b.label });   /* 그림·서술 문제: 그리기 판으로 */
-    if (b.sub && b.sub.length > 1 && type === 'short') {   /* ⑴⑵… 여러 문항: 문항마다 칸을 나눠 묻는다 */
-      const ks = Array.isArray(g.key) && g.key.length === b.sub.length ? g.key.map(String) : b.sub.map(() => '');
-      return sendAsk({ text: b.q, type: 'short', parts: b.sub, pkeys: ks, key: [], label: b.label, mode: g.type });
-    }
-    sendAsk({ text: b.q, type, choices: g.choices, key: g.key != null ? [].concat(g.key) : (b.ans ? [DT.plain(b.ans)] : []), label: b.label, mode: g.type });
+    const g = b.grade || {}, subs = b.sub || [];
+    if (g.type === 'choice' || g.type === 'ox') return sendAsk({ text: b.q, type: g.type, choices: g.choices, key: g.key != null ? [].concat(g.key) : [], label: b.label, mode: g.type });
+    const first = (k) => String(k).split('|')[0];
+    const keys = g.key != null ? [].concat(g.key) : (b.ans ? [DT.plain(b.ans)] : []);
+    const ans = subs.length > 1 && keys.length === subs.length ? keys.map((k, i) => '(' + (i + 1) + ') ' + first(k)).join('   ') : keys.map(first).join(', ');
+    sendAsk({ text: b.q + (subs.length ? '\n' + subs.map((x, i) => '(' + (i + 1) + ') ' + x).join('   ') : ''), type: 'draw', grid: needGrid(b.q + ' ' + subs.join(' ')), key: [], ans: ans || null, fig: /그림|도형|다음 표/.test(DT.plain(b.q)) || null, label: b.label });
   }
   function openAsk() {
     const s = screens()[S.idx];
@@ -549,9 +548,9 @@
       probs.forEach((b) => list.append(DT.el('button', { class: 'chip', type: 'button', onclick: () => { m.close(); askFromBlock(b); } }, (b.label || '문제') + ' 묻기')));
       wrap.append(DT.el('div', { class: 'field' }, DT.el('span', null, '이 화면의 문제'), list));
     }
-    const text = DT.el('textarea', { class: 'textarea', placeholder: '질문을 적거나 비워 두세요. 비워 두면 "지금 화면에 대한 답"으로 물어요.', rows: 2 });
-    const types = DT.el('div', { class: 'chips' }); let type = 'ox';
-    [['ox', 'O / X'], ['choice', '①②③④⑤ 고르기'], ['short', '짧은 답']].forEach(([v, t]) => { const b = DT.el('button', { class: 'chip', type: 'button', 'aria-pressed': v === type ? 'true' : 'false' }, t); b.onclick = () => { type = v; DT.$$('.chip', types).forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); }; types.append(b); });
+    const text = DT.el('textarea', { class: 'textarea', placeholder: '말로 물어보고 비워 둬도 돼요.', rows: 2 });
+    const types = DT.el('div', { class: 'chips' }); let type = 'draw';
+    [['draw', '펜으로 쓰기'], ['ox', 'O / X'], ['choice', '①②③④⑤ 고르기']].forEach(([v, t]) => { const b = DT.el('button', { class: 'chip', type: 'button', 'aria-pressed': v === type ? 'true' : 'false' }, t); b.onclick = () => { type = v; DT.$$('.chip', types).forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); }; types.append(b); });
     wrap.append(DT.el('div', { class: 'field' }, DT.el('span', null, '직접 묻기'), text), DT.el('div', { class: 'field' }, DT.el('span', null, '답하는 방식'), types));
     const m = DT.modal({ title: '학생에게 묻기', body: wrap, wide: true, actions: [{ label: '닫기' }, { label: '보내기', kind: 'ink', icon: 'send', onClick: (c) => { c(); sendAsk({ text: text.value.trim() || DT.plain(s.title) + ' — 지금 화면에 대한 답', type, choices: type === 'choice' ? ['', '', '', '', ''] : null, key: [] }); } }] });
   }
@@ -571,7 +570,7 @@
     const closeB = DT.el('button', { class: 'oclose', type: 'button', 'aria-label': '닫기', html: DT.icon('x') });
     const count = DT.el('div', { class: 'askpanel__count num' });
     const bars = DT.el('div', { class: 'askbars' });
-    const reveal = DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('eye') + '정답 공개' });
+    const reveal = DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('eye') + '학생에게 정답 공개' });
     const stop = DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('check') + '응답 마감' });
     const foot = DT.el('div', { class: 'askpanel__foot' }, reveal, stop);
     const isCur = S.curQ && S.curQ.qid === q.qid;
@@ -613,17 +612,67 @@
       if (!rows.length) box.append(DT.el('p', { class: 'muted' }, '아직 낸 학생이 없어요.'));
       bars.append(box);
     }
-    /* 그림 답: 학생 그림을 작게 모아 보기 · 누르면 크게 */
+    /* 펜 답: 학생 풀이를 작게 모아 보기 · 「채점하기」로 한 명씩 크게 · 맞음/다시 (학생 화면에 바로 뜸, 다른 학생에게는 안 보임)
+       칠판은 반 전체가 보므로 이름은 기본으로 가린다(「이름 보기」로 켜기) */
+    let showNames = !!DT.store.get('board.askNames', false);
+    const nameOf = (r, i) => (showNames ? who(r) : (i + 1) + '번째 풀이');
+    const ordered = () => rows.slice().sort((x, y) => (x.at && y.at ? (x.at.seconds || x.at) - (y.at.seconds || y.at) : 0));   /* 낸 순서 */
+    const mark = async (r, v, set) => {
+      const nv = !set && r.mark === v ? null : v;   /* 작은 단추는 같은 것을 한 번 더 누르면 표시 지우기 */
+      try { await DT.data.markLiveAnswer(S.classId, q.qid, r.key, nv); r.mark = nv; paint(); return true; }
+      catch (e) { DT.toast('표시하지 못했어요. (' + (e.code || e.message || e) + ')', 'bad'); return false; }
+    };
+    const markBtns = (r) => DT.el('div', { class: 'askmark' },
+      DT.el('button', { class: 'askmark__b askmark__b--ok', type: 'button', 'aria-pressed': r.mark === 1 ? 'true' : 'false', onclick: () => mark(r, 1) }, '맞음'),
+      DT.el('button', { class: 'askmark__b askmark__b--bad', type: 'button', 'aria-pressed': r.mark === 0 ? 'true' : 'false', onclick: () => mark(r, 0) }, '다시'));
+    if (q.type === 'draw') {
+      const gradeB = DT.el('button', { class: 'obtn obtn--ink', type: 'button', html: DT.icon('pen') + '채점하기', onclick: () => grade() });
+      const namesB = DT.el('button', { class: 'obtn', type: 'button', html: DT.icon('users') + '이름 보기' });
+      namesB.onclick = () => { showNames = !showNames; DT.store.set('board.askNames', showNames); namesB.innerHTML = DT.icon('users') + (showNames ? '이름 가리기' : '이름 보기'); paint(); };
+      if (showNames) namesB.innerHTML = DT.icon('users') + '이름 가리기';
+      foot.prepend(gradeB, namesB);
+    }
     function paintDraw() {
+      const ok = rows.filter((r) => r.mark === 1).length, bad = rows.filter((r) => r.mark === 0).length;
+      if (rows.length) count.innerHTML = rows.length + '명 응답 <span>/ ' + total + '명 · 맞음 ' + ok + ' · 다시 ' + bad + ' · 채점 전 ' + (rows.length - ok - bad) + '</span>';
+      if (q.reveal && q.ans) bars.append(DT.el('div', { class: 'askpanel__ans', html: '정답 ' + DT.md(q.ans) }));
       const grid = DT.el('div', { class: 'askdraws' });
-      rows.forEach((r) => {
-        const nm = who(r);
-        const cell = DT.el('button', { class: 'askdraw', type: 'button', title: nm }, DT.drawThumb(r.value, 300, 180, { W: 900, H: 520, grid: q.grid }), DT.el('span', null, nm));
-        cell.onclick = () => DT.modal({ title: nm + ' 학생 풀이', wide: true, body: DT.el('div', null, DT.drawThumb(r.value, 900, 520, { W: 900, H: 520, grid: q.grid })) });
-        grid.append(cell);
+      ordered().forEach((r, i) => {
+        const nm = nameOf(r, i);
+        grid.append(DT.el('div', { class: 'askdraw' + (r.mark === 1 ? ' is-ok' : r.mark === 0 ? ' is-bad' : '') },
+          DT.el('button', { class: 'askdraw__pic', type: 'button', title: nm + ' — 크게 보기', onclick: () => grade(i) }, DT.drawThumb(r.value, 300, 180, { W: 900, H: 520, grid: q.grid })),
+          DT.el('span', null, nm), markBtns(r)));
       });
-      if (!rows.length) grid.append(DT.el('p', { class: 'muted' }, '학생들이 그려서 보내면 여기에 모여요.'));
+      if (!rows.length) grid.append(DT.el('p', { class: 'askdraws__empty' }, '학생들이 펜으로 써서 보내면 여기에 모여요.'));
       bars.append(grid);
+    }
+    /* 채점하기: 한 명씩 크게. 처음은 채점 전 풀이부터, 맞음/다시 를 누르면 다음 채점 전 풀이로. 끝나면 모은 수를 알려 준다 */
+    function grade(start) {
+      let list = ordered(); if (!list.length) return DT.toast('아직 낸 학생이 없어요.');
+      let i = start != null ? start : list.findIndex((r) => r.mark == null); if (i < 0) i = 0;
+      const m = DT.modal({ title: '채점하기', wide: true, cls: 'gradebox', body: DT.el('div') });
+      const title = m.box.querySelector('.modal__title');
+      const show = () => {
+        list = ordered(); const r = list[i]; m.body.innerHTML = '';
+        if (!r) { const ok = list.filter((x) => x.mark === 1).length, bad = list.filter((x) => x.mark === 0).length;
+          title.textContent = '채점 끝';
+          m.body.append(DT.el('p', { class: 'grade__done' }, '모두 봤어요 · 맞음 ' + ok + ' · 다시 ' + bad + (list.length - ok - bad ? ' · 채점 전 ' + (list.length - ok - bad) : '')),
+            DT.el('div', { class: 'grade__btns' }, DT.el('button', { class: 'grade__b', type: 'button', onclick: () => { i = list.length - 1; show(); } }, '← 이전'), DT.el('button', { class: 'grade__b grade__b--ink', type: 'button', onclick: m.close }, '닫기')));
+          return; }
+        title.textContent = nameOf(r, i) + ' (' + (i + 1) + ' / ' + list.length + ')';
+        const ansB = q.ans ? DT.el('details', { class: 'grade__ans' }, DT.el('summary', null, '정답 보기 (칠판에 보여요)'), DT.el('div', { html: DT.md(q.ans) })) : null;
+        const st = r.mark === 1 ? '맞음으로 표시했어요' : r.mark === 0 ? '다시로 표시했어요' : '채점 전';
+        const next = () => { const k = list.findIndex((x, j) => j > i && x.mark == null); i = k >= 0 ? k : list.length; show(); };
+        const put = async (v) => { if (await mark(r, v, true)) next(); };
+        m.body.append(...(ansB ? [ansB] : []), DT.drawThumb(r.value, 900, 520, { W: 900, H: 520, grid: q.grid }),
+          DT.el('p', { class: 'grade__st grade__st--' + (r.mark === 1 ? 'ok' : r.mark === 0 ? 'bad' : 'none') }, st),
+          DT.el('div', { class: 'grade__btns' },
+            DT.el('button', { class: 'grade__b', type: 'button', disabled: i === 0, onclick: () => { i--; show(); } }, '← 이전'),
+            DT.el('button', { class: 'grade__b grade__b--ok', type: 'button', onclick: () => put(1) }, '맞음'),
+            DT.el('button', { class: 'grade__b grade__b--bad', type: 'button', onclick: () => put(0) }, '다시'),
+            DT.el('button', { class: 'grade__b', type: 'button', onclick: () => { i++; show(); } }, '다음 →')));
+      };
+      show();
     }
     /* 여러 문항: 문항마다 맞은 학생 수(정답 공개 뒤)와 많이 나온 답 */
     function paintParts() {
@@ -643,7 +692,7 @@
     function record() {
       if (!S.lesson) return;
       const keys = (q.key || []).flatMap((k) => String(k).split('|')).map(DT.norm);
-      const ok = keys.length ? rows.filter((r) => keys.includes(DT.norm(r.value))).length : null;
+      const ok = keys.length ? rows.filter((r) => keys.includes(DT.norm(r.value))).length : q.type === 'draw' && rows.some((r) => r.mark != null) ? rows.filter((r) => r.mark === 1).length : null;
       S.lesson.live = S.lesson.live.filter((x) => x.qid !== q.qid).concat([{ qid: q.qid, text: DT.plain(q.text).slice(0, 80), label: q.label, screenId: q.screenId, n: rows.length, ok }]);
       DT.store.set('board.lesson.' + C.courseId + '.' + S.classId, S.lesson);
     }
@@ -656,6 +705,7 @@
       let v; const right = Math.random() < 0.68;
       if (q.type === 'ox') v = right && keys[0] ? keys[0] : (Math.random() < 0.5 ? 'O' : 'X');
       else if (q.type === 'choice') v = right && keys[0] != null ? String(keys[0]) : String(1 + Math.floor(Math.random() * (q.choices || [1, 2, 3, 4]).length));
+      else if (q.type === 'draw') { const p = []; const y0 = 120 + Math.random() * 200; for (let x = 80; x < 760; x += 20) p.push(x, Math.round(y0 + 40 * Math.sin(x / (40 + Math.random() * 30)))); v = JSON.stringify([{ p, c: '#17191B', s: 4 }]); }
       else v = right && keys[0] ? keys[0] : ['4', '8', '2√3', '모르겠어요'][Math.floor(Math.random() * 4)];
       await DT.data.sendLiveAnswer(S.classId, q.qid, r.key, v); await DT.sleep(60 + Math.random() * 120);
     }

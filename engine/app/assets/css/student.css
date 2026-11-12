@@ -273,3 +273,5 @@
 .lqlist__i small { color: var(--ink-2); }
 /* 격자 그리기 판 (좌표·그래프 문제) */
 .drawpad--grid { background-color: #fff; background-image: linear-gradient(#D9E2EA 1px, transparent 1px), linear-gradient(90deg, #D9E2EA 1px, transparent 1px); background-size: calc(100% / 30) calc(100% / 17.333); }
+
+.livesheet__fig { margin: -4px 0 8px; color: var(--ink-2); font-size: 15px; }

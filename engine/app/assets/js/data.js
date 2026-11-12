@@ -117,8 +117,10 @@
       onLive(classId, cb) { return listen('live', (l) => l.id === classId, (rows) => cb(rows[0] || null)); },
       async getEdits(courseId) { const m = {}; col('edits').filter((e) => e.courseId === courseId).forEach((e) => (m[e.screenId] = e)); return m; },
       async saveEdit(courseId, screenId, e) { return upsert('edits', Object.assign({ order: [], hide: [], scale: {}, hl: {}, text: {}, notes: [] }, e, { id: courseId + '__' + screenId, courseId, screenId, at: Date.now() })); },
-      async sendLiveAnswer(classId, qid, key, value, who) { return upsert('liveAnswers', Object.assign({ id: classId + '__' + qid + '__' + key, classId, qid, key, value, at: Date.now() }, who || {})); },
+      async sendLiveAnswer(classId, qid, key, value, who) { return upsert('liveAnswers', Object.assign({ id: classId + '__' + qid + '__' + key, classId, qid, key, value, at: Date.now() }, who || {}, { mark: null })); },   /* 실제 서버처럼 다시 내면 맞음/다시 표시는 지운다 */
       onLiveAnswers(classId, qid, cb) { return listen('liveAnswers', (a) => a.classId === classId && a.qid === qid, cb); },
+      async markLiveAnswer(classId, qid, key, mark) { return upsert('liveAnswers', { id: classId + '__' + qid + '__' + key, mark }); },
+      onMyLiveAnswer(classId, qid, key, cb) { return listen('liveAnswers', (a) => a.id === classId + '__' + qid + '__' + key, (rows) => cb(rows[0] || null)); },
       async listLiveAnswers(classId) { return col('liveAnswers').filter((a) => a.classId === classId); },
       async sendSignal(classId, key, screenId, level) { return upsert('signals', { id: classId + '__' + screenId + '__' + key, classId, key, screenId, level, at: Date.now() }); },
       onSignals(classId, cb) { return listen('signals', (s) => s.classId === classId, cb); },
@@ -339,12 +341,17 @@
         if (patch.overall != null) up.overall = patch.overall; if (patch.checked != null) up.checked = patch.checked;
         await fs.collection('submissions').doc(subId(aid, key)).update(up);
       },
-      async setLive(classId, patch) { await fs.collection('live').doc(classId).set(Object.assign({ classId }, patch, { at: ts() }), { merge: true }); },
+      /* mergeFields: 보낸 칸(question 등)은 통째로 바꾸고, 안 보낸 칸(screenId 등)만 남긴다.
+         merge:true 로 하면 question 안까지 섞여서 앞 문제의 ⑴⑵ 소문항·격자·이름표가 새 문제에 남는다(학생 화면에 같은 문제가 계속 뜸). */
+      async setLive(classId, patch) { const d = Object.assign({ classId }, patch, { at: ts() }); await fs.collection('live').doc(classId).set(d, { mergeFields: Object.keys(d).filter((k) => d[k] !== undefined) }); },
       onLive(classId, cb) { return fs.collection('live').doc(classId).onSnapshot((d) => cb(d.exists ? d.data() : null), () => cb(null)); },
       async getEdits(courseId) { const m = {}; try { docs(await fs.collection('edits').where('courseId', '==', courseId).get()).forEach((e) => (m[e.screenId] = e)); } catch (err) { /* 규칙 없는 옛 서버: 고친 것 없이 */ } return m; },
       async saveEdit(courseId, screenId, e) { await fs.collection('edits').doc(courseId + '__' + screenId).set(Object.assign({ order: [], hide: [], scale: {}, hl: {}, text: {}, notes: [] }, e, { courseId, screenId, at: ts() })); },
       async sendLiveAnswer(classId, qid, key, value, who) { await fs.collection('liveAnswers').doc(classId + '__' + qid + '__' + skey(key)).set(Object.assign({ classId, qid, key, value, at: ts() }, who || {})); },
       onLiveAnswers(classId, qid, cb) { return fs.collection('liveAnswers').where('classId', '==', classId).where('qid', '==', qid).onSnapshot((s) => cb(docs(s))); },
+      /* 펜 답 채점: 선생님이 ⭕(1) / 다시(0) — 그 학생의 답 기록에만 붙인다(다른 학생에게 안 보임). 학생이 답을 고쳐 다시 내면 표시는 지워진다 */
+      async markLiveAnswer(classId, qid, key, mark) { await fs.collection('liveAnswers').doc(classId + '__' + qid + '__' + skey(key)).update({ mark }); },
+      onMyLiveAnswer(classId, qid, key, cb) { return fs.collection('liveAnswers').doc(classId + '__' + qid + '__' + skey(key)).onSnapshot((d) => cb(d.exists ? d.data() : null), () => cb(null)); },
       async listLiveAnswers(classId) { return docs(await fs.collection('liveAnswers').where('classId', '==', classId).get()); },
       async sendSignal(classId, key, screenId, level) { await fs.collection('signals').doc(classId + '__' + screenId + '__' + skey(key)).set({ classId, key, screenId, level, at: ts() }); },
       onSignals(classId, cb) { return fs.collection('signals').where('classId', '==', classId).onSnapshot((s) => cb(docs(s))); },

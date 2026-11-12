@@ -566,17 +566,18 @@
     if (!q || folded.has(q.qid) || (!q.open && !q.reveal && !(sheet && sheet.dataset.qid === q.qid))) { paintQChip(); return; }
     openSheet(q);
   }
-  function closeSheet() { if (sheet) { if (sheet._pad) sheet._pad.destroy(); sheet.remove(); } sheet = null; sheetQ = null; paintQChip(); }
+  function closeSheet() { if (sheet) { if (sheet._pad) sheet._pad.destroy(); if (sheet._off) sheet._off(); sheet.remove(); } sheet = null; sheetQ = null; paintQChip(); }
   function openSheet(q, force) {
     const answered = DT.store.get('st.lq.' + q.qid, null);
     const stamp = q.qid + ':' + (q.reveal ? 1 : 0) + ':' + (q.open === false ? 0 : 1) + ':' + (answered != null ? 1 : 0);
     if (!force && sheet && sheetQ === stamp) return;
-    if (sheet) { if (sheet._pad) sheet._pad.destroy(); sheet.remove(); }
+    if (sheet) { if (sheet._pad) sheet._pad.destroy(); if (sheet._off) sheet._off(); sheet.remove(); }
     sheetQ = stamp;
     sheet = DT.el('div', { class: 'livesheet', role: 'dialog', 'aria-label': '선생님 질문' }); sheet.dataset.qid = q.qid; sheet._editing = editing.has(q.qid) && !locked0(q);
     const fold = DT.el('button', { class: 'livesheet__fold', type: 'button', html: DT.icon('down') + '접기', title: '접어 두기 — 오른쪽 아래 「선생님 질문」으로 다시 열어요' });
     fold.onclick = () => { folded.add(q.qid); closeSheet(); };
     sheet.append(DT.el('div', { class: 'livesheet__head' }, DT.el('h3', null, '선생님 질문' + (q.label ? ' · ' + q.label : '')), fold), DT.el('div', { class: 'livesheet__q', html: DT.md(q.text) }));
+    if (q.fig) sheet.append(DT.el('p', { class: 'livesheet__fig' }, '그림은 칠판을 보세요.'));
     const locked = q.open === false;
     const send = async (v) => {
       DT.store.set('st.lq.' + q.qid, v); editing.delete(q.qid);
@@ -592,8 +593,10 @@
     } else if (q.reveal) {
       const keys = (q.key || []).flatMap((k) => String(k).split('|')).map(DT.norm).filter(Boolean);
       if (answered != null) sheet.append(mineView(answered));
-      if (!keys.length) sheet.append(DT.el('div', { class: 'fb fb--note' }, answered != null ? '보냈어요. 선생님 설명을 들으며 내 풀이와 비교해 봐요.' : '선생님이 풀이를 설명해요.'));
-      else { const ok = answered != null && keys.includes(DT.norm(answered)); sheet.append(DT.el('div', { class: 'fb ' + (answered == null ? 'fb--note' : ok ? 'fb--ok' : 'fb--bad') }, answered == null ? '정답이 공개됐어요.' : ok ? '맞았어요!' : '다시 생각해 봐요. 선생님 설명을 들어 보세요.')); }
+      if (!keys.length) {   /* 정답 키가 없는 질문: 맞다·틀리다를 말하지 않는다 */
+        sheet.append(DT.el('div', { class: 'fb fb--note' }, answered == null ? '선생님이 풀이를 설명해요.' : q.type === 'draw' ? '선생님 설명을 들으며 내 풀이와 비교해 봐요.' : '보냈어요. 선생님 설명을 들어 보세요.'));
+        if (q.ans) sheet.append(DT.el('div', { class: 'fb fb--note', html: '정답 ' + DT.md(q.ans) }));
+      } else { const ok = answered != null && keys.includes(DT.norm(answered)); sheet.append(DT.el('div', { class: 'fb ' + (answered == null ? 'fb--note' : ok ? 'fb--ok' : 'fb--bad') }, answered == null ? '정답이 공개됐어요.' : ok ? '맞았어요!' : '다시 생각해 봐요. 선생님 설명을 들어 보세요.')); }
     } else if (locked) {
       sheet.append(...(answered != null ? [mineView(answered)] : []), DT.el('div', { class: 'fb fb--note' }, answered != null ? '응답이 마감됐어요. 낸 답이에요.' : '응답이 마감됐어요.'));
     } else if (q.type === 'lab') {   /* 탐구 그림: 칠판과 같은 모형을 열고, 움직인 막대 값이 칠판에 모인다(이름 없이) */
@@ -618,7 +621,7 @@
       return;
     } else if (answered != null && !sheet._editing) {
       sheet.append(mineView(answered), DT.el('div', { class: 'fb fb--note' }, '보냈어요. 마감 전까지 고칠 수 있어요.'),
-        DT.el('button', { class: 'btn btn--sm', type: 'button', html: DT.icon('pencil') + '답 고치기', onclick: () => { editing.add(q.qid); openSheet(q, true); } }));
+        DT.el('button', { class: 'btn btn--sm livesheet__edit', type: 'button', html: DT.icon('pencil') + '답 고치기', onclick: () => { editing.add(q.qid); openSheet(q, true); } }));
     } else if (q.type === 'ox') {
       const w = DT.el('div', { class: 'ox' }); ['O', 'X'].forEach((v) => w.append(DT.el('button', { type: 'button', onclick: () => send(v) }, v))); sheet.append(w);
     } else if (q.type === 'choice') {
@@ -631,10 +634,22 @@
     } else if (q.type === 'draw') {   /* 그림·서술 문제: 그리기 판으로 답하기 (격자 문제면 모눈) — 고칠 때는 낸 그림 위에 이어서 */
       const pad = DT.drawPad({ w: 900, h: 520, grid: q.grid, value: answered || '' }); sheet._pad = pad;
       sheet.classList.add('livesheet--draw');
-      sheet.append(pad.el, DT.el('button', { class: 'btn btn--ink', type: 'button', style: { marginTop: '10px' }, html: DT.icon('send') + '보내기', onclick: () => { const v = pad.value(); if (!v) return DT.toast('풀이를 그려 주세요.', 'bad'); if (v.length > 600000) return DT.toast('그림이 너무 커요. 조금 지우고 보내 주세요.', 'bad'); send(v); } }));
+      sheet.append(pad.el, DT.el('button', { class: 'btn btn--ink', type: 'button', style: { marginTop: '10px' }, html: DT.icon('send') + '보내기', onclick: () => { const v = pad.value(); if (!v) return DT.toast('풀이를 써 주세요.', 'bad'); if (v.length > 600000) return DT.toast('그림이 너무 커요. 조금 지우고 보내 주세요.', 'bad'); send(v); } }));
     } else {
       const af = DT.ansFields((q.key || [])[0]);
       sheet.append(af.el, DT.keypad(() => af.current(), DT.keysPlus(DT.keysFor(S.tb, q.screenId), (q.key || []).join('|'))), DT.el('button', { class: 'btn btn--ink', type: 'button', style: { marginTop: '10px' }, html: DT.icon('send') + '보내기', onclick: () => { const v = af.value(); if (!v) return DT.toast('답을 적어 주세요.', 'bad'); send(v); } }));
+    }
+    /* 펜 답: 선생님이 ⭕/다시 를 누르면 바로 보인다(내 답 기록만 지켜봄) */
+    if (q.type === 'draw' && answered != null && !sheet._editing) {
+      const mk = DT.el('div', { class: 'fb', hidden: true, 'aria-live': 'polite' });
+      const at = sheet.querySelector('.fb'); if (at) at.before(mk); else sheet.append(mk);
+      sheet._off = DT.data.onMyLiveAnswer(S.me.classId, q.qid, S.me.key, (r) => {
+        const v = r && r.mark; mk.hidden = v !== 1 && v !== 0;
+        const canEdit = q.open !== false && !q.reveal, edit = sheet && sheet.querySelector('.livesheet__edit');
+        if (edit) edit.hidden = v === 1;   /* 맞음을 받으면 「답 고치기」는 숨긴다 */
+        if (v === 1) { mk.className = 'fb fb--ok'; mk.textContent = '선생님이 맞았다고 표시했어요.'; }
+        else if (v === 0) { mk.className = 'fb fb--bad'; mk.textContent = '선생님이 다시 생각해 보래요.' + (canEdit ? ' 「답 고치기」로 고쳐서 다시 보내요.' : ' 정답과 선생님 설명을 보며 비교해 봐요.'); }
+      });
     }
     document.body.append(sheet); paintQChip();
   }

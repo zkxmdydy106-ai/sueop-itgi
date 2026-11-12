@@ -8,6 +8,10 @@
 열쇠는 작업물/<이름>/.sharekey 에 둔다(공개 호스팅에 올라가지 않음). 링크: https://<프로젝트>.web.app/board.html?k=<열쇠>
 """
 import argparse, base64, json, os, re, sys, time, urllib.request, urllib.parse
+try:
+    sys.stdout.reconfigure(encoding='utf-8')   # 한국어 윈도 터미널(cp949)에서 '—' 같은 글자로 멈추지 않게
+except Exception:
+    pass
 
 CFG = os.path.join(os.path.expanduser('~'), '.config', 'configstore', 'firebase-tools.json')
 CLIENT_ID = '563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com'   # firebase-tools 공개 클라이언트

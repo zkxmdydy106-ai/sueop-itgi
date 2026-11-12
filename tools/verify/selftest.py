@@ -32,6 +32,7 @@ UNIT = [
     ['판서 색: 6칸', "DT.ink.palette.paper.length === 6 && DT.ink.palette.chalk.length === 6"],
     ['판서 색: 종류별 색 묶음', "DT.ink.colorSets.length >= 4 && DT.ink.colorSets.every((s) => s[1].length >= 6)"],
     ['탐구 그림: 모형이 칠판 고리를 단다', "typeof DT.lab.onOpen === 'function'"],
+    ['학생에게 묻기: 새 문제가 앞 문제와 섞이지 않음(서버 live는 merge:true 금지)', "fetch('assets/js/data.js').then((r) => r.text()).then((t) => /collection\\('live'\\)[^\\n]*mergeFields/.test(t) && !/collection\\('live'\\)[^\\n]*merge: true/.test(t))"],
     ['수식이 글자로 남지 않음', "!/\\$|\\\\frac/.test(DT.plain('$\\\\frac{1}{2}$ 와 **굵게**'))"],
 ]
 
